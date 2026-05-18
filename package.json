@@ -1,0 +1,32 @@
+{
+  "name": "floate",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Rooms d'écoute audio collective en peer-to-peer.",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "npm --prefix server run dev",
+    "dev:all": "concurrently -n web,sig -c cyan,magenta \"npm run dev\" \"npm run dev:server\"",
+    "build": "vite build",
+    "preview": "vite preview",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "install:all": "npm install && npm --prefix server install",
+    "test:server": "npm --prefix server test"
+  },
+  "dependencies": {
+    "vue": "^3.4.0",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "@storybook/addon-essentials": "^8.3.0",
+    "@storybook/blocks": "^8.3.0",
+    "@storybook/vue3": "^8.3.0",
+    "@storybook/vue3-vite": "^8.3.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "concurrently": "^9.0.0",
+    "storybook": "^8.3.0",
+    "vite": "^5.4.0"
+  }
+}

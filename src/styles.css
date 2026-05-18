@@ -1,0 +1,286 @@
+/* =============================================================
+   floate — styles globaux
+   Tokens, reset et primitives qui matérialisent DESIGN-SYSTEM.md.
+   Toute valeur ici doit pouvoir être tracée à un token du DS.
+   ============================================================= */
+
+/* -------------------------------------------------------------
+   1. Tokens (§2 du DS)
+   ------------------------------------------------------------- */
+:root {
+  /* 1.1 Couleurs (§2.1) */
+  --bg: #0E0D12;
+  --bg-elev: #18171F;
+  --bg-elev-2: #221F2B;
+  --border: #2A2735;
+
+  --text: #ECE9F1;
+  --text-dim: #9B96AA;
+  --text-faint: #5E5A6D;
+  --text-on-accent: #1A0F0A;
+
+  --accent: #F4A261;
+  --accent-soft: #F4A26122;        /* abricot 13% */
+  --accent-strong: #E76F51;        /* CTA principal uniquement */
+
+  --live: #EF476F;                 /* exclusif à l'état "ça diffuse" */
+  --live-bg: rgba(239, 71, 111, 0.12);
+  --live-border: rgba(239, 71, 111, 0.3);
+
+  --good: #80C79C;                 /* succès / toasts */
+
+  /* 1.2 Typo (§2.2) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --fs-display: 44px;
+  --fs-display-sm: 32px;
+  --fs-h1-stage: 28px;
+  --fs-h2: 18px;
+  --fs-body: 15px;
+  --fs-body-sm: 14px;
+  --fs-meta: 13px;
+  --fs-mini: 12px;
+  --fs-micro: 11px;
+
+  --tracking-tight: -0.02em;
+  --tracking-label: 0.08em;
+  --tracking-badge: 0.1em;
+
+  /* 1.3 Espacements (§2.3) */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 20px;
+  --space-2xl: 28px;
+  --space-3xl: 40px;
+
+  /* 1.4 Radius (§2.4) */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;     /* boutons, items, inputs */
+  --radius-lg: 10px;    /* panneaux secondaires */
+  --radius-xl: 12px;    /* cards principaux */
+  --radius-2xl: 14px;   /* stage */
+  --radius-pill: 999px;
+
+  /* 1.5 Ombres (§2.5) */
+  --shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+
+  /* 1.6 Motion (§2.6) */
+  --duration-instant: 60ms;
+  --duration-fast: 150ms;
+  --duration-default: 200ms;
+  --duration-pulse: 1600ms;
+  --duration-shimmer: 1400ms;
+
+  --easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-out: cubic-bezier(0, 0, 0.2, 1);
+  --easing-in-out: cubic-bezier(0.42, 0, 0.58, 1);
+
+  /* 1.7 Layout (§8 du DS, design-tokens.json) */
+  --max-width-lobby: 720px;
+  --max-width-card: 460px;
+  --max-width-room: 1200px;
+  --sidebar-width: 320px;
+  --stage-visualizer-w: 420px;
+  --stage-visualizer-h: 80px;
+  --breakpoint-room: 900px;
+}
+
+/* -------------------------------------------------------------
+   2. Reset minimal
+   ------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: 1.5;
+  color: var(--text);
+  background:
+    radial-gradient(1200px 800px at 80% -10%, #2a1f2e 0%, transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, #1a2330 0%, transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
+  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+h1, h2, h3, h4, h5, h6, p { margin: 0; }
+
+/* Focus visible universel — §6.1 du DS */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* -------------------------------------------------------------
+   3. Classes utilitaires globales (§3 du DS)
+   ------------------------------------------------------------- */
+
+/* 3.1 Boutons — exposés en classes globales pour réutilisation,
+       le composant FlButton.vue les applique dynamiquement. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: 11px 18px;
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--easing-default),
+              border-color var(--duration-fast) var(--easing-default),
+              color var(--duration-fast) var(--easing-default),
+              transform var(--duration-instant) var(--easing-default);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* RÈGLE D'OR (§3.1) : une seule .btn-primary par viewport.
+   Si tu vois deux .btn-primary, l'une des deux est une .btn-secondary. */
+.btn-primary {
+  background: var(--accent-strong);
+  color: var(--text-on-accent);
+}
+.btn-primary:hover { background: #d96344; }
+
+.btn-secondary {
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border-color: var(--border);
+}
+.btn-secondary:hover { border-color: var(--text-faint); }
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+}
+.btn-ghost:hover { color: var(--text); }
+
+/* Réservé à "Arrêter la diffusion" — §3.1 + règle stricte du --live (§2.1) */
+.btn-danger {
+  background: transparent;
+  color: var(--live);
+  border-color: #3A1A25;
+}
+.btn-danger:hover { background: rgba(239, 71, 111, 0.08); }
+
+.btn-pending {
+  background: var(--bg-elev-2);
+  color: var(--text-dim);
+  border-color: var(--border);
+  cursor: default;
+}
+
+/* 3.4 Card / Panel */
+.card {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 22px;
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+
+.panel-title {
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  margin: 0 0 14px;
+}
+
+/* -------------------------------------------------------------
+   4. Keyframes globales (§2.6)
+   ------------------------------------------------------------- */
+@keyframes fl-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+@keyframes fl-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fl-slide-in {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+@keyframes fl-slide-out {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(20px); opacity: 0; }
+}
+
+/* -------------------------------------------------------------
+   5. Accessibilité (§6.4)
+   ------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Texte uniquement lu par les lecteurs d'écran */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

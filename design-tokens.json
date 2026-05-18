@@ -1,0 +1,191 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Design tokens floate au format W3C DTCG. Importable via le plugin Tokens Studio dans Figma. Tous les tokens sont prefixés par 'floate.'.",
+  "floate": {
+    "color": {
+      "surface": {
+        "bg":      { "$type": "color", "$value": "#0E0D12", "$description": "Fond global (nuit)" },
+        "elev1":   { "$type": "color", "$value": "#18171F", "$description": "Surface niveau 1 — cards, panels" },
+        "elev2":   { "$type": "color", "$value": "#221F2B", "$description": "Surface niveau 2 — toggle actif, accent subtil" },
+        "border":  { "$type": "color", "$value": "#2A2735", "$description": "Bordures et séparateurs" }
+      },
+      "text": {
+        "primary":   { "$type": "color", "$value": "#ECE9F1", "$description": "Texte principal" },
+        "secondary": { "$type": "color", "$value": "#9B96AA", "$description": "Texte secondaire, labels" },
+        "faint":     { "$type": "color", "$value": "#5E5A6D", "$description": "Texte tertiaire, hints" },
+        "on-accent": { "$type": "color", "$value": "#1A0F0A", "$description": "Texte sur fond accent-strong" }
+      },
+      "accent": {
+        "default":   { "$type": "color", "$value": "#F4A261", "$description": "Abricot — bordure host, badge À LA MAIN, liens secondaires" },
+        "soft":      { "$type": "color", "$value": "#F4A26122", "$description": "Abricot 13% — fond du card host" },
+        "strong":    { "$type": "color", "$value": "#E76F51", "$description": "Terracotta — CTA principal" }
+      },
+      "semantic": {
+        "live":    { "$type": "color", "$value": "#EF476F", "$description": "Rouge ON AIR — exclusif à l'état diffusion" },
+        "success": { "$type": "color", "$value": "#80C79C", "$description": "Vert succès — toasts confirmation" }
+      },
+      "background-gradient": {
+        "$type": "string",
+        "$value": "radial-gradient(1200px 800px at 80% -10%, #2a1f2e 0%, transparent 60%), radial-gradient(900px 700px at -10% 110%, #1a2330 0%, transparent 55%), #0E0D12",
+        "$description": "Background de page : deux radial gradients chauds superposés au fond nuit"
+      }
+    },
+    "spacing": {
+      "xs":  { "$type": "dimension", "$value": "4px" },
+      "sm":  { "$type": "dimension", "$value": "8px" },
+      "md":  { "$type": "dimension", "$value": "12px" },
+      "lg":  { "$type": "dimension", "$value": "16px" },
+      "xl":  { "$type": "dimension", "$value": "20px" },
+      "2xl": { "$type": "dimension", "$value": "28px" },
+      "3xl": { "$type": "dimension", "$value": "40px" }
+    },
+    "radius": {
+      "xs":   { "$type": "dimension", "$value": "4px",   "$description": "Tags, micro-badges" },
+      "sm":   { "$type": "dimension", "$value": "6px",   "$description": "Inputs" },
+      "md":   { "$type": "dimension", "$value": "8px",   "$description": "Boutons, items de liste" },
+      "lg":   { "$type": "dimension", "$value": "10px",  "$description": "Panneaux secondaires" },
+      "xl":   { "$type": "dimension", "$value": "12px",  "$description": "Cards principaux" },
+      "2xl":  { "$type": "dimension", "$value": "14px",  "$description": "Stage" },
+      "pill": { "$type": "dimension", "$value": "999px", "$description": "Live badge, avatars" }
+    },
+    "typography": {
+      "font-family": {
+        "sans": { "$type": "fontFamily", "$value": ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"] },
+        "mono": { "$type": "fontFamily", "$value": ["ui-monospace", "SF Mono", "Menlo", "monospace"] }
+      },
+      "display-44": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 700, "fontSize": "44px", "lineHeight": "1.15", "letterSpacing": "-0.02em" },
+        "$description": "Hero du lobby"
+      },
+      "display-32": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 700, "fontSize": "32px", "lineHeight": "1.15", "letterSpacing": "-0.02em" },
+        "$description": "Hero compact"
+      },
+      "h1-stage": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 700, "fontSize": "28px", "lineHeight": "1.2", "letterSpacing": "-0.01em" },
+        "$description": "Nom du host sur le stage"
+      },
+      "h2": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 600, "fontSize": "18px", "lineHeight": "1.4" }
+      },
+      "body": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 400, "fontSize": "15px", "lineHeight": "1.5" }
+      },
+      "body-sm": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 400, "fontSize": "14px", "lineHeight": "1.5" }
+      },
+      "meta": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 400, "fontSize": "13px", "lineHeight": "1.5" }
+      },
+      "mini": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 400, "fontSize": "12px", "lineHeight": "1.4" }
+      },
+      "label-upper": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 600, "fontSize": "12px", "lineHeight": "1.2", "textCase": "uppercase", "letterSpacing": "0.08em" },
+        "$description": "Labels de panel et de field"
+      },
+      "badge-upper": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.sans}", "fontWeight": 700, "fontSize": "11px", "lineHeight": "1", "textCase": "uppercase", "letterSpacing": "0.1em" },
+        "$description": "Badges (ON AIR, À LA MAIN, PRIVÉE)"
+      },
+      "code-mono": {
+        "$type": "typography",
+        "$value": { "fontFamily": "{floate.typography.font-family.mono}", "fontWeight": 400, "fontSize": "16px", "lineHeight": "1.4", "letterSpacing": "0.06em", "textCase": "uppercase" },
+        "$description": "Codes d'invitation"
+      }
+    },
+    "shadow": {
+      "card": {
+        "$type": "shadow",
+        "$value": { "offsetX": "0", "offsetY": "10px", "blur": "40px", "spread": "0", "color": "#00000066" },
+        "$description": "Ombre des cards principales — RGBA(0,0,0,0.4)"
+      }
+    },
+    "motion": {
+      "duration": {
+        "instant":   { "$type": "duration", "$value": "60ms" },
+        "fast":      { "$type": "duration", "$value": "150ms" },
+        "default":   { "$type": "duration", "$value": "200ms" },
+        "pulse":     { "$type": "duration", "$value": "1600ms" },
+        "shimmer":   { "$type": "duration", "$value": "1400ms" }
+      },
+      "easing": {
+        "default": { "$type": "cubicBezier", "$value": [0.4, 0, 0.2, 1] },
+        "out":     { "$type": "cubicBezier", "$value": [0, 0, 0.2, 1] },
+        "in-out":  { "$type": "cubicBezier", "$value": [0.42, 0, 0.58, 1] }
+      },
+      "visualizer": {
+        "rise":  { "$type": "number", "$value": 0.6,  "$description": "Coefficient d'attaque (lerp) des barres" },
+        "decay": { "$type": "number", "$value": 0.88, "$description": "Multiplicateur de relâchement par frame" }
+      }
+    },
+    "component": {
+      "button": {
+        "padding-y": { "$type": "dimension", "$value": "11px" },
+        "padding-x": { "$type": "dimension", "$value": "18px" },
+        "radius":    { "$type": "dimension", "$value": "{floate.radius.md}" },
+        "font":      { "$type": "string", "$value": "{floate.typography.body-sm}", "fontWeight": 600 }
+      },
+      "input": {
+        "padding-y": { "$type": "dimension", "$value": "10px" },
+        "padding-x": { "$type": "dimension", "$value": "12px" },
+        "radius":    { "$type": "dimension", "$value": "{floate.radius.md}" },
+        "focus-ring-width": { "$type": "dimension", "$value": "3px" },
+        "focus-ring-color": { "$type": "color", "$value": "{floate.color.accent.soft}" }
+      },
+      "card": {
+        "radius":   { "$type": "dimension", "$value": "{floate.radius.xl}" },
+        "padding":  { "$type": "dimension", "$value": "22px" },
+        "shadow":   { "$type": "shadow", "$value": "{floate.shadow.card}" }
+      },
+      "panel": {
+        "radius":   { "$type": "dimension", "$value": "{floate.radius.lg}" },
+        "padding":  { "$type": "dimension", "$value": "18px" }
+      },
+      "avatar": {
+        "size":     { "$type": "dimension", "$value": "28px" },
+        "font":     { "$type": "string", "$value": "{floate.typography.mini}", "fontWeight": 700 },
+        "color-fn": { "$type": "string", "$value": "hsl(hash(pseudo) % 360, 38%, 52%)", "$description": "Couleur dérivée du pseudo par hash — voir colorOf() dans src/lib/colors.js" }
+      },
+      "toast": {
+        "max-width": { "$type": "dimension", "$value": "360px" },
+        "padding":   { "$type": "dimension", "$value": "12px 16px" },
+        "duration-default":  { "$type": "duration", "$value": "4000ms" },
+        "duration-critical": { "$type": "duration", "$value": "6000ms" }
+      },
+      "stage": {
+        "radius":     { "$type": "dimension", "$value": "{floate.radius.2xl}" },
+        "padding":    { "$type": "dimension", "$value": "32px" },
+        "min-height": { "$type": "dimension", "$value": "360px" }
+      },
+      "live-badge": {
+        "bg":           { "$type": "color", "$value": "#EF476F1F", "$description": "Live 12%" },
+        "border":       { "$type": "color", "$value": "#EF476F4D", "$description": "Live 30%" },
+        "color":        { "$type": "color", "$value": "{floate.color.semantic.live}" },
+        "dot-size":     { "$type": "dimension", "$value": "7px" },
+        "pulse-duration": { "$type": "duration", "$value": "{floate.motion.duration.pulse}" }
+      }
+    },
+    "layout": {
+      "max-width-lobby":     { "$type": "dimension", "$value": "720px" },
+      "max-width-card":      { "$type": "dimension", "$value": "460px" },
+      "max-width-room":      { "$type": "dimension", "$value": "1200px" },
+      "max-room-members":    { "$type": "number",    "$value": 8 },
+      "sidebar-width":       { "$type": "dimension", "$value": "320px" },
+      "stage-visualizer-w":  { "$type": "dimension", "$value": "420px" },
+      "stage-visualizer-h":  { "$type": "dimension", "$value": "80px" },
+      "breakpoint-room":     { "$type": "dimension", "$value": "900px", "$description": "Sous ce seuil, sidebar passe sous le stage" },
+      "breakpoint-lobby":    { "$type": "dimension", "$value": "720px" }
+    }
+  }
+}

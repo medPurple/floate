@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1480 1900" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <linearGradient id="brandGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F4A261"/>
+      <stop offset="1" stop-color="#E76F51"/>
+    </linearGradient>
+    <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F4A261"/>
+      <stop offset="1" stop-color="#E76F51"/>
+    </linearGradient>
+    <pattern id="bgPat" patternUnits="userSpaceOnUse" width="1480" height="1900">
+      <rect width="1480" height="1900" fill="#0E0D12"/>
+      <ellipse cx="1180" cy="-200" rx="600" ry="400" fill="#2a1f2e" opacity="0.5"/>
+      <ellipse cx="-150" cy="2100" rx="450" ry="350" fill="#1a2330" opacity="0.5"/>
+    </pattern>
+  </defs>
+
+  <rect width="1480" height="1900" fill="url(#bgPat)"/>
+
+  <!-- ─── HEADER ─────────────────────────────────────────────── -->
+  <g transform="translate(60 50)">
+    <text font-size="36" font-weight="700" fill="url(#brandGrad)">floate</text>
+    <text x="120" y="0" font-size="14" fill="#9B96AA" dominant-baseline="middle">design system canvas · v0.2</text>
+  </g>
+
+  <!-- ─── SECTION 1 : PALETTE ─────────────────────────────────── -->
+  <g transform="translate(60 110)">
+    <text font-size="13" font-weight="600" fill="#9B96AA" letter-spacing="1.2">01 — PALETTE</text>
+
+    <!-- Surfaces -->
+    <g transform="translate(0 24)">
+      <rect width="120" height="80" rx="10" fill="#0E0D12"/>
+      <text x="14" y="22" font-size="11" fill="#FFF" opacity="0.7">Surface bg</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#FFF">#0E0D12</text>
+    </g>
+    <g transform="translate(130 24)">
+      <rect width="120" height="80" rx="10" fill="#18171F"/>
+      <text x="14" y="22" font-size="11" fill="#FFF" opacity="0.7">Surface elev 1</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#FFF">#18171F</text>
+    </g>
+    <g transform="translate(260 24)">
+      <rect width="120" height="80" rx="10" fill="#221F2B"/>
+      <text x="14" y="22" font-size="11" fill="#FFF" opacity="0.7">Surface elev 2</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#FFF">#221F2B</text>
+    </g>
+    <g transform="translate(390 24)">
+      <rect width="120" height="80" rx="10" fill="#2A2735"/>
+      <text x="14" y="22" font-size="11" fill="#FFF" opacity="0.7">Bordure</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#FFF">#2A2735</text>
+    </g>
+
+    <!-- Accents -->
+    <g transform="translate(520 24)">
+      <rect width="120" height="80" rx="10" fill="#F4A261"/>
+      <text x="14" y="22" font-size="11" font-weight="500" fill="#4A1B0C">Accent abricot</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#4A1B0C">#F4A261</text>
+    </g>
+    <g transform="translate(650 24)">
+      <rect width="120" height="80" rx="10" fill="#E76F51"/>
+      <text x="14" y="22" font-size="11" font-weight="500" fill="#2A0D04">CTA terracotta</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#2A0D04">#E76F51</text>
+    </g>
+    <g transform="translate(780 24)">
+      <rect width="120" height="80" rx="10" fill="#EF476F"/>
+      <text x="14" y="22" font-size="11" font-weight="500" fill="#2A0510">ON AIR (réservé)</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#2A0510">#EF476F</text>
+    </g>
+    <g transform="translate(910 24)">
+      <rect width="120" height="80" rx="10" fill="#80C79C"/>
+      <text x="14" y="22" font-size="11" font-weight="500" fill="#0A2A18">Succès</text>
+      <text x="14" y="68" font-family="ui-monospace" font-size="11" fill="#0A2A18">#80C79C</text>
+    </g>
+
+    <!-- Texts -->
+    <g transform="translate(1040 24)">
+      <rect width="120" height="80" rx="10" fill="#18171F" stroke="#2A2735"/>
+      <text x="14" y="32" font-size="14" fill="#ECE9F1">Aa Texte</text>
+      <text x="14" y="50" font-size="12" fill="#9B96AA">Aa secondaire</text>
+      <text x="14" y="68" font-size="11" fill="#5E5A6D">Aa faint</text>
+    </g>
+  </g>
+
+  <!-- ─── SECTION 2 : COMPOSANTS ──────────────────────────────── -->
+  <g transform="translate(60 270)">
+    <text font-size="13" font-weight="600" fill="#9B96AA" letter-spacing="1.2">02 — COMPOSANTS</text>
+
+    <!-- Boutons -->
+    <text x="0" y="30" font-size="11" fill="#5E5A6D">Boutons</text>
+    <g transform="translate(0 42)">
+      <g><rect width="180" height="40" rx="8" fill="#E76F51"/><text x="90" y="25" text-anchor="middle" font-size="13" font-weight="600" fill="#1A0F0A">Bouton primary</text></g>
+      <g transform="translate(196 0)"><rect width="180" height="40" rx="8" fill="#221F2B" stroke="#2A2735"/><text x="90" y="25" text-anchor="middle" font-size="13" font-weight="600" fill="#ECE9F1">Bouton secondary</text></g>
+      <g transform="translate(392 0)"><rect width="180" height="40" rx="8" fill="transparent" stroke="none"/><text x="90" y="25" text-anchor="middle" font-size="13" font-weight="600" fill="#9B96AA">Bouton ghost</text></g>
+      <g transform="translate(588 0)"><rect width="180" height="40" rx="8" fill="transparent" stroke="#3A1A25"/><text x="90" y="25" text-anchor="middle" font-size="13" font-weight="600" fill="#EF476F">Arrêter la diffusion</text></g>
+      <g transform="translate(784 0)"><rect width="220" height="40" rx="8" fill="#221F2B" stroke="#2A2735"/><text x="110" y="25" text-anchor="middle" font-size="13" font-weight="600" fill="#9B96AA">Demande envoyée · 47s</text></g>
+    </g>
+
+    <!-- Inputs -->
+    <text x="0" y="106" font-size="11" fill="#5E5A6D">Inputs</text>
+    <g transform="translate(0 118)">
+      <g>
+        <rect width="240" height="40" rx="6" fill="#18171F" stroke="#2A2735"/>
+        <text x="14" y="25" font-size="13" fill="#ECE9F1">Léa</text>
+      </g>
+      <g transform="translate(256 0)">
+        <rect width="240" height="40" rx="6" fill="#18171F" stroke="#2A2735"/>
+        <text x="14" y="25" font-size="14" font-family="ui-monospace" fill="#9B96AA" letter-spacing="2">AKZ-394</text>
+      </g>
+      <g transform="translate(512 0)">
+        <rect width="240" height="40" rx="6" fill="#18171F" stroke="#F4A261"/>
+        <rect x="-3" y="-3" width="246" height="46" rx="8" fill="none" stroke="#F4A261" stroke-opacity="0.13" stroke-width="3"/>
+        <text x="14" y="25" font-size="13" fill="#ECE9F1">Input focus (ring abricot)</text>
+      </g>
+    </g>
+
+    <!-- Toggle + tags -->
+    <text x="0" y="184" font-size="11" fill="#5E5A6D">Toggle visibilité &amp; tags</text>
+    <g transform="translate(0 196)">
+      <rect width="200" height="36" rx="6" fill="#0E0D12" stroke="#2A2735"/>
+      <rect x="3" y="3" width="97" height="30" rx="5" fill="#221F2B"/>
+      <text x="51" y="23" text-anchor="middle" font-size="12" font-weight="500" fill="#ECE9F1">Publique</text>
+      <text x="148" y="23" text-anchor="middle" font-size="12" fill="#9B96AA">Privée</text>
+    </g>
+    <g transform="translate(220 198)">
+      <rect width="68" height="22" rx="4" fill="none" stroke="#2A2735"/>
+      <text x="34" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#9B96AA" letter-spacing="1">PUBLIQUE</text>
+    </g>
+    <g transform="translate(298 198)">
+      <rect width="62" height="22" rx="4" fill="none" stroke="#F4A261"/>
+      <text x="31" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#F4A261" letter-spacing="1">PRIVÉE</text>
+    </g>
+    <g transform="translate(370 198)">
+      <rect width="80" height="22" rx="999" fill="#EF476F" fill-opacity="0.12" stroke="#EF476F" stroke-opacity="0.3"/>
+      <circle cx="14" cy="11" r="3.5" fill="#EF476F"/>
+      <text x="46" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#EF476F" letter-spacing="1">ON AIR</text>
+    </g>
+    <g transform="translate(460 198)">
+      <rect width="86" height="22" rx="4" fill="#F4A261" fill-opacity="0.13" stroke="#F4A261" stroke-opacity="0.5"/>
+      <text x="43" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#F4A261" letter-spacing="1">À LA MAIN</text>
+    </g>
+
+    <!-- Toasts -->
+    <text x="640" y="184" font-size="11" fill="#5E5A6D">Toasts (info, success, error)</text>
+    <g transform="translate(640 196)">
+      <rect width="340" height="40" rx="8" fill="#221F2B" stroke="#2A2735"/>
+      <rect width="3" height="40" fill="#F4A261"/>
+      <text x="16" y="25" font-size="13" fill="#ECE9F1">Sam a rejoint.</text>
+    </g>
+    <g transform="translate(640 246)">
+      <rect width="340" height="40" rx="8" fill="#221F2B" stroke="#2A2735"/>
+      <rect width="3" height="40" fill="#80C79C"/>
+      <text x="16" y="25" font-size="13" fill="#ECE9F1">Room privée créée. Code : AKZ-394</text>
+    </g>
+    <g transform="translate(640 296)">
+      <rect width="340" height="40" rx="8" fill="#221F2B" stroke="#2A2735"/>
+      <rect width="3" height="40" fill="#EF476F"/>
+      <text x="16" y="25" font-size="13" fill="#ECE9F1">Coche « Partager l'audio de l'onglet ».</text>
+    </g>
+
+    <!-- Avatars -->
+    <text x="0" y="260" font-size="11" fill="#5E5A6D">Avatars (host = accent, autres = hash(pseudo))</text>
+    <g transform="translate(0 274)">
+      <g><circle cx="14" cy="14" r="14" fill="#F4A261"/><text x="14" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#1A0F0A">L</text></g>
+      <g transform="translate(40 0)"><circle cx="14" cy="14" r="14" fill="hsl(120, 38%, 52%)"/><text x="14" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">S</text></g>
+      <g transform="translate(80 0)"><circle cx="14" cy="14" r="14" fill="hsl(280, 38%, 52%)"/><text x="14" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">N</text></g>
+      <g transform="translate(120 0)"><circle cx="14" cy="14" r="14" fill="hsl(40, 38%, 52%)"/><text x="14" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">A</text></g>
+      <g transform="translate(160 0)"><circle cx="14" cy="14" r="14" fill="hsl(200, 38%, 52%)"/><text x="14" y="18" text-anchor="middle" font-size="12" font-weight="700" fill="#FFF">M</text></g>
+    </g>
+
+    <!-- Visualizer -->
+    <text x="0" y="330" font-size="11" fill="#5E5A6D">Visualiseur (live + ambient)</text>
+    <g transform="translate(0 344)">
+      <rect width="440" height="80" rx="10" fill="#18171F" stroke="#2A2735"/>
+      <g transform="translate(20 15)" fill="url(#barGrad)">
+        <rect x="0" y="20" width="5" height="10" rx="1"/><rect x="8" y="14" width="5" height="22" rx="1"/>
+        <rect x="16" y="8" width="5" height="34" rx="1"/><rect x="24" y="16" width="5" height="18" rx="1"/>
+        <rect x="32" y="6" width="5" height="38" rx="1"/><rect x="40" y="12" width="5" height="26" rx="1"/>
+        <rect x="48" y="2" width="5" height="46" rx="1"/><rect x="56" y="10" width="5" height="30" rx="1"/>
+        <rect x="64" y="18" width="5" height="14" rx="1"/><rect x="72" y="6" width="5" height="38" rx="1"/>
+        <rect x="80" y="14" width="5" height="22" rx="1"/><rect x="88" y="4" width="5" height="42" rx="1"/>
+        <rect x="96" y="12" width="5" height="26" rx="1"/><rect x="104" y="20" width="5" height="10" rx="1"/>
+        <rect x="112" y="8" width="5" height="34" rx="1"/><rect x="120" y="14" width="5" height="22" rx="1"/>
+        <rect x="128" y="2" width="5" height="46" rx="1"/><rect x="136" y="10" width="5" height="30" rx="1"/>
+        <rect x="144" y="6" width="5" height="38" rx="1"/><rect x="152" y="16" width="5" height="18" rx="1"/>
+        <rect x="160" y="12" width="5" height="26" rx="1"/><rect x="168" y="20" width="5" height="10" rx="1"/>
+        <rect x="176" y="8" width="5" height="34" rx="1"/><rect x="184" y="14" width="5" height="22" rx="1"/>
+        <rect x="192" y="2" width="5" height="46" rx="1"/><rect x="200" y="18" width="5" height="14" rx="1"/>
+        <rect x="208" y="10" width="5" height="30" rx="1"/><rect x="216" y="14" width="5" height="22" rx="1"/>
+        <rect x="224" y="6" width="5" height="38" rx="1"/><rect x="232" y="20" width="5" height="10" rx="1"/>
+        <rect x="240" y="12" width="5" height="26" rx="1"/><rect x="248" y="4" width="5" height="42" rx="1"/>
+        <rect x="256" y="16" width="5" height="18" rx="1"/><rect x="264" y="8" width="5" height="34" rx="1"/>
+        <rect x="272" y="14" width="5" height="22" rx="1"/><rect x="280" y="20" width="5" height="10" rx="1"/>
+        <rect x="288" y="10" width="5" height="30" rx="1"/><rect x="296" y="18" width="5" height="14" rx="1"/>
+        <rect x="304" y="6" width="5" height="38" rx="1"/><rect x="312" y="14" width="5" height="22" rx="1"/>
+        <rect x="320" y="20" width="5" height="10" rx="1"/><rect x="328" y="8" width="5" height="34" rx="1"/>
+        <rect x="336" y="16" width="5" height="18" rx="1"/><rect x="344" y="10" width="5" height="30" rx="1"/>
+        <rect x="352" y="20" width="5" height="10" rx="1"/><rect x="360" y="12" width="5" height="26" rx="1"/>
+        <rect x="368" y="6" width="5" height="38" rx="1"/><rect x="376" y="14" width="5" height="22" rx="1"/>
+        <rect x="384" y="20" width="5" height="10" rx="1"/><rect x="392" y="14" width="5" height="22" rx="1"/>
+      </g>
+    </g>
+    <g transform="translate(460 344)">
+      <rect width="440" height="80" rx="10" fill="#18171F" stroke="#2A2735"/>
+      <path d="M 20 55 Q 110 30, 220 55 T 420 55" stroke="#F4A261" stroke-opacity="0.18" stroke-width="1.5" fill="none"/>
+    </g>
+  </g>
+
+  <!-- ─── SECTION 3 : ÉCRAN LOBBY ─────────────────────────────── -->
+  <g transform="translate(60 850)">
+    <text font-size="13" font-weight="600" fill="#9B96AA" letter-spacing="1.2">03 — ÉCRAN LOBBY</text>
+
+    <g transform="translate(0 24)">
+      <rect width="720" height="900" rx="12" fill="#0E0D12" stroke="#2A2735" stroke-width="0.5"/>
+
+      <text x="32" y="48" font-size="15" font-weight="700" fill="url(#brandGrad)">floate</text>
+      <text x="688" y="48" text-anchor="end" font-size="12" fill="#5E5A6D">v0.2</text>
+
+      <!-- Illustration -->
+      <g transform="translate(270 90)">
+        <rect x="2" y="28" width="40" height="24" rx="4" fill="none" stroke="#F4A261" stroke-width="1"/>
+        <circle cx="10" cy="34" r="1.2" fill="#F4A261"/><circle cx="14" cy="34" r="1.2" fill="#F4A261"/><circle cx="18" cy="34" r="1.2" fill="#F4A261"/>
+        <rect x="8" y="38" width="28" height="10" rx="1" fill="#221F2B"/>
+        <path d="M 46 40 Q 70 30 90 36" stroke="#E76F51" stroke-width="1.5" fill="none"/>
+        <path d="M 46 40 Q 70 50 90 50" stroke="#E76F51" stroke-width="1.5" fill="none"/>
+        <path d="M 46 40 Q 80 40 90 64" stroke="#E76F51" stroke-width="1.5" fill="none"/>
+        <circle cx="100" cy="34" r="9" fill="none" stroke="#80C79C"/>
+        <text x="100" y="38" text-anchor="middle" font-size="9" fill="#80C79C" font-weight="700">S</text>
+        <circle cx="100" cy="50" r="9" fill="none" stroke="#9B96AA"/>
+        <text x="100" y="54" text-anchor="middle" font-size="9" fill="#9B96AA" font-weight="700">N</text>
+        <circle cx="100" cy="66" r="9" fill="none" stroke="#a574e0"/>
+        <text x="100" y="70" text-anchor="middle" font-size="9" fill="#a574e0" font-weight="700">M</text>
+      </g>
+
+      <text x="360" y="210" text-anchor="middle" font-size="28" font-weight="700" fill="#ECE9F1" letter-spacing="-0.5">Le son d'un onglet,</text>
+      <text x="360" y="244" text-anchor="middle" font-size="28" font-weight="700" fill="#ECE9F1" letter-spacing="-0.5">à plusieurs, en direct.</text>
+      <text x="360" y="270" text-anchor="middle" font-size="13" fill="#9B96AA">Diffuse depuis ton navigateur. Aucune installation.</text>
+
+      <!-- Card primaire -->
+      <g transform="translate(130 300)">
+        <rect width="460" height="240" rx="12" fill="#18171F" stroke="#2A2735" stroke-width="0.5"/>
+        <text x="18" y="32" font-size="11" font-weight="600" fill="#9B96AA" letter-spacing="1">TON PSEUDO</text>
+        <rect x="18" y="42" width="424" height="36" rx="6" fill="#0E0D12" stroke="#2A2735"/>
+        <text x="30" y="65" font-size="13" fill="#ECE9F1">Léa</text>
+
+        <text x="18" y="104" font-size="11" font-weight="600" fill="#9B96AA" letter-spacing="1">CODE D'INVITATION</text>
+        <rect x="18" y="114" width="424" height="36" rx="6" fill="#0E0D12" stroke="#2A2735"/>
+        <text x="30" y="137" font-family="ui-monospace" font-size="13" letter-spacing="2" fill="#9B96AA">AKZ-394</text>
+
+        <rect x="18" y="162" width="424" height="40" rx="6" fill="#E76F51"/>
+        <text x="230" y="187" text-anchor="middle" font-size="14" font-weight="600" fill="#1A0F0A">Rejoindre la room</text>
+
+        <line x1="18" y1="218" x2="442" y2="218" stroke="#2A2735" stroke-width="0.5"/>
+        <text x="230" y="235" text-anchor="middle" font-size="13" font-weight="500" fill="#F4A261">Pas de code ? Crée ta room →</text>
+      </g>
+
+      <!-- Rooms publiques -->
+      <text x="32" y="588" font-size="11" font-weight="600" fill="#9B96AA" letter-spacing="1">ROOMS PUBLIQUES EN CE MOMENT (2)</text>
+
+      <g transform="translate(32 604)">
+        <rect width="656" height="56" rx="8" fill="#18171F" stroke="#2A2735"/>
+        <text x="18" y="24" font-size="14" font-weight="500" fill="#ECE9F1">Lo-fi du matin</text>
+        <text x="18" y="42" font-size="12" fill="#9B96AA">3 participants · animée par Sam</text>
+        <text x="638" y="34" text-anchor="end" font-size="13" font-weight="500" fill="#F4A261">Rejoindre →</text>
+      </g>
+      <g transform="translate(32 672)">
+        <rect width="656" height="56" rx="8" fill="#18171F" stroke="#2A2735"/>
+        <text x="18" y="24" font-size="14" font-weight="500" fill="#ECE9F1">Vinyles d'amis</text>
+        <text x="18" y="42" font-size="12" fill="#9B96AA">2 participants · animée par Noé</text>
+        <text x="638" y="34" text-anchor="end" font-size="13" font-weight="500" fill="#F4A261">Rejoindre →</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ─── SECTION 4 : ROOM (HOST STREAMING) ───────────────────── -->
+  <g transform="translate(800 850)">
+    <text font-size="13" font-weight="600" fill="#9B96AA" letter-spacing="1.2">04 — ROOM (hôte en diffusion)</text>
+
+    <g transform="translate(0 24)">
+      <rect width="620" height="540" rx="12" fill="#0E0D12" stroke="#2A2735" stroke-width="0.5"/>
+
+      <!-- header -->
+      <line y1="56" x2="620" y2="56" stroke="#2A2735"/>
+      <text x="20" y="35" font-size="15" font-weight="700" fill="url(#brandGrad)">floate</text>
+      <text x="100" y="35" font-size="14" font-weight="500" fill="#ECE9F1">Set du dimanche</text>
+      <g transform="translate(255 22)">
+        <rect width="62" height="22" rx="4" fill="none" stroke="#F4A261"/>
+        <text x="31" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#F4A261" letter-spacing="1">PRIVÉE</text>
+      </g>
+      <text x="600" y="35" text-anchor="end" font-size="13" fill="#9B96AA">Quitter</text>
+
+      <!-- stage -->
+      <g transform="translate(20 78)">
+        <rect width="380" height="440" rx="12" fill="#18171F" stroke="#2A2735"/>
+
+        <g transform="translate(150 26)">
+          <rect width="80" height="22" rx="999" fill="#EF476F" fill-opacity="0.12" stroke="#EF476F" stroke-opacity="0.3"/>
+          <circle cx="14" cy="11" r="3.5" fill="#EF476F"/>
+          <text x="46" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#EF476F" letter-spacing="1">ON AIR</text>
+        </g>
+
+        <text x="190" y="86" text-anchor="middle" font-size="11" font-weight="600" fill="#5E5A6D" letter-spacing="1">DIFFUSION</text>
+        <text x="190" y="122" text-anchor="middle" font-size="24" font-weight="700" fill="#ECE9F1">Léa</text>
+        <text x="190" y="146" text-anchor="middle" font-size="13" fill="#9B96AA">Tu diffuses pour 3 personnes.</text>
+
+        <g transform="translate(30 180)" fill="url(#barGrad)">
+          <rect x="0" y="20" width="5" height="10" rx="1"/><rect x="8" y="14" width="5" height="22" rx="1"/>
+          <rect x="16" y="8" width="5" height="34" rx="1"/><rect x="24" y="16" width="5" height="18" rx="1"/>
+          <rect x="32" y="6" width="5" height="38" rx="1"/><rect x="40" y="12" width="5" height="26" rx="1"/>
+          <rect x="48" y="2" width="5" height="46" rx="1"/><rect x="56" y="10" width="5" height="30" rx="1"/>
+          <rect x="64" y="18" width="5" height="14" rx="1"/><rect x="72" y="6" width="5" height="38" rx="1"/>
+          <rect x="80" y="14" width="5" height="22" rx="1"/><rect x="88" y="4" width="5" height="42" rx="1"/>
+          <rect x="96" y="12" width="5" height="26" rx="1"/><rect x="104" y="20" width="5" height="10" rx="1"/>
+          <rect x="112" y="8" width="5" height="34" rx="1"/><rect x="120" y="14" width="5" height="22" rx="1"/>
+          <rect x="128" y="2" width="5" height="46" rx="1"/><rect x="136" y="10" width="5" height="30" rx="1"/>
+          <rect x="144" y="6" width="5" height="38" rx="1"/><rect x="152" y="16" width="5" height="18" rx="1"/>
+          <rect x="160" y="12" width="5" height="26" rx="1"/><rect x="168" y="20" width="5" height="10" rx="1"/>
+          <rect x="176" y="8" width="5" height="34" rx="1"/><rect x="184" y="14" width="5" height="22" rx="1"/>
+          <rect x="192" y="2" width="5" height="46" rx="1"/><rect x="200" y="18" width="5" height="14" rx="1"/>
+          <rect x="208" y="10" width="5" height="30" rx="1"/><rect x="216" y="14" width="5" height="22" rx="1"/>
+          <rect x="224" y="6" width="5" height="38" rx="1"/><rect x="232" y="20" width="5" height="10" rx="1"/>
+          <rect x="240" y="12" width="5" height="26" rx="1"/><rect x="248" y="4" width="5" height="42" rx="1"/>
+          <rect x="256" y="16" width="5" height="18" rx="1"/><rect x="264" y="8" width="5" height="34" rx="1"/>
+          <rect x="272" y="14" width="5" height="22" rx="1"/><rect x="280" y="20" width="5" height="10" rx="1"/>
+          <rect x="288" y="10" width="5" height="30" rx="1"/><rect x="296" y="18" width="5" height="14" rx="1"/>
+          <rect x="304" y="6" width="5" height="38" rx="1"/><rect x="312" y="14" width="5" height="22" rx="1"/>
+        </g>
+
+        <g transform="translate(110 340)">
+          <rect width="160" height="40" rx="8" fill="transparent" stroke="#3A1A25"/>
+          <text x="80" y="25" text-anchor="middle" font-size="13" font-weight="500" fill="#EF476F">Arrêter la diffusion</text>
+        </g>
+      </g>
+
+      <!-- sidebar -->
+      <g transform="translate(420 78)">
+        <!-- code panel -->
+        <g>
+          <rect width="180" height="80" rx="10" fill="#18171F" stroke="#2A2735"/>
+          <text x="14" y="22" font-size="10" font-weight="600" fill="#9B96AA" letter-spacing="1">CODE D'INVITATION</text>
+          <rect x="14" y="32" width="152" height="34" rx="5" fill="#0E0D12" stroke="#2A2735"/>
+          <text x="24" y="54" font-family="ui-monospace" font-size="14" letter-spacing="2" fill="#F4A261">AKZ-394</text>
+          <text x="156" y="54" text-anchor="end" font-size="11" fill="#9B96AA">Copier</text>
+        </g>
+        <!-- sortie audio -->
+        <g transform="translate(0 92)">
+          <rect width="180" height="64" rx="10" fill="#18171F" stroke="#2A2735"/>
+          <text x="14" y="22" font-size="10" font-weight="600" fill="#9B96AA" letter-spacing="1">SORTIE AUDIO</text>
+          <rect x="14" y="32" width="152" height="22" rx="5" fill="#0E0D12" stroke="#2A2735"/>
+          <text x="24" y="48" font-size="12" fill="#ECE9F1">AirPods Pro</text>
+        </g>
+        <!-- demandes -->
+        <g transform="translate(0 168)">
+          <rect width="180" height="88" rx="10" fill="#18171F" stroke="#2A2735"/>
+          <text x="14" y="22" font-size="10" font-weight="600" fill="#9B96AA" letter-spacing="1">DEMANDES DE MAIN</text>
+          <rect x="14" y="32" width="152" height="46" rx="5" fill="#0E0D12" stroke="#2A2735"/>
+          <rect x="14" y="32" width="2" height="46" fill="#F4A261"/>
+          <text x="24" y="48" font-size="12" fill="#ECE9F1">Sam demande la main</text>
+          <rect x="22" y="56" width="62" height="16" rx="3" fill="#E76F51"/>
+          <text x="53" y="68" text-anchor="middle" font-size="10" font-weight="600" fill="#1A0F0A">Donner</text>
+          <text x="100" y="68" font-size="10" fill="#9B96AA">Refuser</text>
+        </g>
+        <!-- participants -->
+        <g transform="translate(0 268)">
+          <rect width="180" height="180" rx="10" fill="#18171F" stroke="#2A2735"/>
+          <text x="14" y="22" font-size="10" font-weight="600" fill="#9B96AA" letter-spacing="1">PARTICIPANTS (4)</text>
+          <g transform="translate(14 32)">
+            <rect width="152" height="32" rx="5" fill="#F4A261" fill-opacity="0.13" stroke="#F4A261"/>
+            <circle cx="20" cy="16" r="10" fill="#F4A261"/>
+            <text x="20" y="20" text-anchor="middle" font-size="11" font-weight="700" fill="#1A0F0A">L</text>
+            <text x="36" y="20" font-size="12" font-weight="600" fill="#ECE9F1">Léa (toi)</text>
+            <text x="146" y="20" text-anchor="end" font-size="9" font-weight="700" fill="#F4A261" letter-spacing="1">À LA MAIN</text>
+          </g>
+          <g transform="translate(14 70)">
+            <rect width="152" height="30" rx="5" fill="#0E0D12"/>
+            <circle cx="20" cy="15" r="10" fill="hsl(120, 38%, 52%)"/>
+            <text x="20" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">S</text>
+            <text x="36" y="19" font-size="12" fill="#ECE9F1">Sam</text>
+          </g>
+          <g transform="translate(14 104)">
+            <rect width="152" height="30" rx="5" fill="#0E0D12"/>
+            <circle cx="20" cy="15" r="10" fill="hsl(280, 38%, 52%)"/>
+            <text x="20" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">N</text>
+            <text x="36" y="19" font-size="12" fill="#ECE9F1">Noé</text>
+          </g>
+          <g transform="translate(14 138)">
+            <rect width="152" height="30" rx="5" fill="#0E0D12"/>
+            <circle cx="20" cy="15" r="10" fill="hsl(40, 38%, 52%)"/>
+            <text x="20" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="#FFF">A</text>
+            <text x="36" y="19" font-size="12" fill="#ECE9F1">Anna</text>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- ─── SECTION 5 : ROOM (HOST ONBOARDING) ──────────────────── -->
+  <g transform="translate(800 1420)">
+    <text font-size="13" font-weight="600" fill="#9B96AA" letter-spacing="1.2">05 — ROOM (hôte, onboarding pré-diffusion)</text>
+
+    <g transform="translate(0 24)">
+      <rect width="620" height="440" rx="12" fill="#0E0D12" stroke="#2A2735" stroke-width="0.5"/>
+
+      <line y1="56" x2="620" y2="56" stroke="#2A2735"/>
+      <text x="20" y="35" font-size="15" font-weight="700" fill="url(#brandGrad)">floate</text>
+      <text x="100" y="35" font-size="14" font-weight="500" fill="#ECE9F1">Set du dimanche</text>
+      <g transform="translate(255 22)">
+        <rect width="62" height="22" rx="4" fill="none" stroke="#F4A261"/>
+        <text x="31" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#F4A261" letter-spacing="1">PRIVÉE</text>
+      </g>
+
+      <!-- stage onboarding -->
+      <g transform="translate(20 78)">
+        <rect width="580" height="340" rx="12" fill="#18171F" stroke="#2A2735"/>
+
+        <text x="290" y="38" text-anchor="middle" font-size="11" font-weight="600" fill="#5E5A6D" letter-spacing="1">PRÊT À DIFFUSER</text>
+        <text x="290" y="74" text-anchor="middle" font-size="22" font-weight="700" fill="#ECE9F1">Bienvenue, Léa</text>
+
+        <g transform="translate(120 110)">
+          <!-- étape 1 -->
+          <circle cx="11" cy="11" r="11" fill="#221F2B" stroke="#2A2735"/>
+          <text x="11" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#9B96AA">1</text>
+          <text x="34" y="15" font-size="13" fill="#ECE9F1">Choisis l'onglet où ta musique joue.</text>
+
+          <!-- étape 2 highlight -->
+          <g transform="translate(0 36)">
+            <circle cx="11" cy="11" r="11" fill="#F4A261" fill-opacity="0.2" stroke="#F4A261"/>
+            <text x="11" y="15" text-anchor="middle" font-size="11" font-weight="700" fill="#F4A261">2</text>
+            <text x="34" y="14" font-size="13" font-weight="600" fill="#F4A261">Coche bien la case « Partager l'audio de l'onglet ».</text>
+            <text x="34" y="30" font-size="12" fill="#9B96AA">Sans elle, tes invités ne t'entendront pas.</text>
+          </g>
+        </g>
+
+        <g transform="translate(120 220)">
+          <rect width="340" height="40" rx="6" fill="#E76F51"/>
+          <text x="170" y="25" text-anchor="middle" font-size="14" font-weight="600" fill="#1A0F0A">Démarrer la diffusion</text>
+        </g>
+
+        <text x="290" y="290" text-anchor="middle" font-size="12" fill="#5E5A6D">3 personnes attendent</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- légende -->
+  <g transform="translate(60 1810)">
+    <text font-size="11" fill="#5E5A6D">Importer dans Figma → File → Import → floate-canvas.svg. Pour les tokens : plugin "Tokens Studio" → Load tokens → JSON → coller design-tokens.json.</text>
+  </g>
+
+</svg>
