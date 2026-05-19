@@ -147,6 +147,9 @@ function closeHelp() {
     <header class="lobby-top">
       <span class="brand">floate</span>
       <div class="lobby-meta">
+        <span id="lobby-help-trigger-desc" class="sr-only">
+          Ouvre la fenêtre d’aide sur le fonctionnement de floate.
+        </span>
         <button
           type="button"
           class="lobby-help-link"
@@ -155,9 +158,6 @@ function closeHelp() {
         >
           Comment ça marche ?
         </button>
-        <span id="lobby-help-trigger-desc" class="sr-only">
-          Ouvre la fenêtre d’aide sur le fonctionnement de floate.
-        </span>
         <span class="version">v0.1</span>
       </div>
     </header>
@@ -182,7 +182,7 @@ function closeHelp() {
             Pour diffuser l'audio d'un onglet, utilise Chrome ou Edge et coche « Partager l'audio de l'onglet ».
           </p>
           <div class="lobby-help-actions">
-            <FlButton variant="secondary" aria-label="Fermer l’aide" @click="closeHelp">J’ai compris</FlButton>
+            <FlButton variant="secondary" @click="closeHelp">J’ai compris</FlButton>
           </div>
         </article>
       </section>
