@@ -6,7 +6,7 @@
  */
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { WebSocket } from 'ws'
+import WebSocket from 'ws'
 
 process.env.PORT = '8788'           // port isolé pour les tests
 process.env.ADMIN_TOKEN = 'test-token'
@@ -35,40 +35,64 @@ async function get(path, headers = {}) {
   return { status: res.status, body, json }
 }
 
-function onceMessage(ws) {
+async function openWs(path = '/signaling') {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${process.env.PORT}${path}`)
+    ws.once('open', () => resolve(ws))
+    ws.once('error', reject)
+  })
+}
+
+async function waitForMessageType(ws, type, timeoutMs = 1000, predicate = null) {
   return new Promise((resolve, reject) => {
     const onMessage = (raw) => {
+      let msg = null
+      try { msg = JSON.parse(String(raw)) } catch { return }
+      if (msg?.type !== type) return
+      if (predicate && !predicate(msg)) return
       cleanup()
-      resolve(JSON.parse(raw.toString()))
+      resolve(msg)
     }
-    const onError = (err) => {
+    const onTimeout = () => {
       cleanup()
-      reject(err)
-    }
-    const onClose = () => {
-      cleanup()
-      reject(new Error('socket closed before message'))
+      reject(new Error(`timeout waiting for message type "${type}"`))
     }
     const cleanup = () => {
       ws.off('message', onMessage)
-      ws.off('error', onError)
-      ws.off('close', onClose)
+      clearTimeout(timer)
     }
-
+    const timer = setTimeout(onTimeout, timeoutMs)
     ws.on('message', onMessage)
-    ws.on('error', onError)
-    ws.on('close', onClose)
+  })
+}
+
+async function expectNoMessageType(ws, type, timeoutMs = 300, predicate = null) {
+  return new Promise((resolve, reject) => {
+    const onMessage = (raw) => {
+      let msg = null
+      try { msg = JSON.parse(String(raw)) } catch { return }
+      if (msg?.type !== type) return
+      if (predicate && !predicate(msg)) return
+      cleanup()
+      reject(new Error(`unexpected "${type}" message received`))
+    }
+    const onTimeout = () => {
+      cleanup()
+      resolve()
+    }
+    const cleanup = () => {
+      ws.off('message', onMessage)
+      clearTimeout(timer)
+    }
+    const timer = setTimeout(onTimeout, timeoutMs)
+    ws.on('message', onMessage)
   })
 }
 
 async function joinRoom(room, peerId, pseudo) {
-  const ws = new WebSocket(`ws://localhost:${process.env.PORT}/signaling`)
-  await new Promise((resolve, reject) => {
-    ws.once('open', resolve)
-    ws.once('error', reject)
-  })
+  const ws = await openWs()
   ws.send(JSON.stringify({ type: 'join', room, peerId, pseudo }))
-  const welcome = await onceMessage(ws)
+  const welcome = await waitForMessageType(ws, 'welcome')
   return { ws, welcome }
 }
 
@@ -143,46 +167,114 @@ test('welcome expose la palette courante et un changement host est diffusé aux 
   const room = `PAL${Date.now()}A`
   const { ws: host, welcome: hostWelcome } = await joinRoom(room, 'host-a', 'Host')
 
-  assert.equal(hostWelcome.type, 'welcome')
-  assert.equal(hostWelcome.palette, 'ambiance-abricot')
+  try {
+    assert.equal(hostWelcome.type, 'welcome')
+    assert.equal(hostWelcome.palette, 'ambiance-abricot')
 
-  const joined = onceMessage(host)
-  const { ws: listener, welcome: listenerWelcome } = await joinRoom(room, 'listener-a', 'Listener')
+    const joined = waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === 'listener-a')
+    const { ws: listener, welcome: listenerWelcome } = await joinRoom(room, 'listener-a', 'Listener')
 
-  assert.equal(listenerWelcome.palette, 'ambiance-abricot')
-  assert.equal((await joined).type, 'peer-joined')
+    try {
+      assert.equal(listenerWelcome.palette, 'ambiance-abricot')
+      assert.equal((await joined).type, 'peer-joined')
 
-  host.send(JSON.stringify({ type: 'palette-change', palette: 'lavande' }))
+      host.send(JSON.stringify({ type: 'palette-change', palette: 'lavande' }))
 
-  const hostPalette = await onceMessage(host)
-  const listenerPalette = await onceMessage(listener)
+      const [hostPalette, listenerPalette] = await Promise.all([
+        waitForMessageType(host, 'palette-changed'),
+        waitForMessageType(listener, 'palette-changed')
+      ])
 
-  assert.deepEqual(hostPalette, { type: 'palette-changed', palette: 'lavande' })
-  assert.deepEqual(listenerPalette, { type: 'palette-changed', palette: 'lavande' })
-
-  host.close()
-  listener.close()
+      assert.deepEqual(hostPalette, { type: 'palette-changed', palette: 'lavande' })
+      assert.deepEqual(listenerPalette, { type: 'palette-changed', palette: 'lavande' })
+    } finally {
+      listener.close()
+    }
+  } finally {
+    host.close()
+  }
 })
 
 test('palette-change ignore les listeners et persiste pour les nouveaux arrivants', async () => {
   const room = `PAL${Date.now()}B`
   const { ws: host } = await joinRoom(room, 'host-b', 'Host')
 
-  const joined = onceMessage(host)
-  const { ws: listener } = await joinRoom(room, 'listener-b', 'Listener')
-  assert.equal((await joined).type, 'peer-joined')
+  try {
+    const joined = waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === 'listener-b')
+    const { ws: listener } = await joinRoom(room, 'listener-b', 'Listener')
 
-  listener.send(JSON.stringify({ type: 'palette-change', palette: 'lagon' }))
-  await new Promise(resolve => setTimeout(resolve, 75))
+    try {
+      assert.equal((await joined).type, 'peer-joined')
 
-  host.send(JSON.stringify({ type: 'palette-change', palette: 'foret' }))
-  await onceMessage(host)
-  await onceMessage(listener)
+      listener.send(JSON.stringify({ type: 'palette-change', palette: 'lagon' }))
+      await expectNoMessageType(host, 'palette-changed', 300, (msg) => msg.palette === 'lagon')
 
-  const { ws: newcomer, welcome } = await joinRoom(room, 'listener-c', 'Late listener')
-  assert.equal(welcome.palette, 'foret')
+      host.send(JSON.stringify({ type: 'palette-change', palette: 'foret' }))
+      await Promise.all([
+        waitForMessageType(host, 'palette-changed', 1000, (msg) => msg.palette === 'foret'),
+        waitForMessageType(listener, 'palette-changed', 1000, (msg) => msg.palette === 'foret')
+      ])
 
-  host.close()
-  listener.close()
-  newcomer.close()
+      const { ws: newcomer, welcome } = await joinRoom(room, 'listener-c', 'Late listener')
+      try {
+        assert.equal(welcome.palette, 'foret')
+      } finally {
+        newcomer.close()
+      }
+    } finally {
+      listener.close()
+    }
+  } finally {
+    host.close()
+  }
+})
+
+test('Refresh listener: la fermeture de l’ancienne socket ne supprime pas la nouvelle session', async () => {
+  const host = await openWs()
+  const listenerA = await openWs()
+  let listenerB = null
+
+  try {
+    const room = 'RFRSH1'
+    const listenerId = 'listener-refresh'
+
+    host.send(JSON.stringify({ type: 'join', room, pseudo: 'Host' }))
+    const hostWelcome = await waitForMessageType(host, 'welcome')
+    const hostId = hostWelcome.peerId
+
+    listenerA.send(JSON.stringify({
+      type: 'join',
+      room,
+      peerId: listenerId,
+      pseudo: 'Listener'
+    }))
+    await waitForMessageType(listenerA, 'welcome')
+    await waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === listenerId)
+
+    listenerB = await openWs()
+    listenerB.send(JSON.stringify({
+      type: 'join',
+      room,
+      peerId: listenerId,
+      pseudo: 'Listener'
+    }))
+    const refreshedWelcome = await waitForMessageType(listenerB, 'welcome')
+    assert.equal(refreshedWelcome.peerId, listenerId)
+
+    listenerA.close()
+    await expectNoMessageType(host, 'peer-left', 400, (msg) => msg.peerId === listenerId)
+
+    host.send(JSON.stringify({
+      type: 'signal',
+      to: listenerId,
+      data: { kind: 'offer', sdp: { type: 'offer', sdp: 'dummy' } }
+    }))
+    const relayedSignal = await waitForMessageType(listenerB, 'signal')
+    assert.equal(relayedSignal.from, hostId)
+    assert.equal(relayedSignal.data.kind, 'offer')
+  } finally {
+    host.close()
+    listenerA.close()
+    listenerB?.close()
+  }
 })

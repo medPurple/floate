@@ -334,14 +334,18 @@ wssSignaling.on('connection', (ws) => {
     if (!myRoom || !myId) return
     const room = rooms.get(myRoom)
     if (!room) return
+    const currentPeer = room.get(myId)
+    // Cas "refresh" : un nouveau ws peut déjà avoir repris le même peerId.
+    // On ignore la fermeture de l'ancienne socket pour ne pas supprimer
+    // le peer reconnecté.
+    if (!currentPeer || currentPeer.ws !== ws) return
 
     const wasHost = hostOf(room) === myId
-    const me = room.get(myId)
-    if (me) trackSessionClosed(me.joinedAt)
+    trackSessionClosed(currentPeer.joinedAt)
     room.delete(myId)
     room._streaming?.delete(myId)
 
-    if (me) trackEvent('leave', me.pseudo, room._name || myRoom)
+    trackEvent('leave', currentPeer.pseudo, room._name || myRoom)
 
     if (room.size === 0) {
       rooms.delete(myRoom)
