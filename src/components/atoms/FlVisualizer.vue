@@ -19,7 +19,7 @@ const props = defineProps({
   height: { type: Number, default: 80 }
 })
 
-const BARS = 48
+const BARS = 48 // garder un nombre pair pour une répartition symétrique centre → extérieur
 const RISE = 0.6
 const DECAY = 0.88
 
