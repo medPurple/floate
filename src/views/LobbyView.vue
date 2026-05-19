@@ -147,7 +147,7 @@ function closeHelp() {
     <header class="lobby-top">
       <span class="brand">floate</span>
       <div class="lobby-meta">
-        <button type="button" class="lobby-help-link" aria-label="Afficher comment floate fonctionne" @click="openHelp">Comment ça marche ?</button>
+        <button type="button" class="lobby-help-link" @click="openHelp">Comment ça marche ?</button>
         <span class="version">v0.1</span>
       </div>
     </header>
