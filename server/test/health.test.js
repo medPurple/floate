@@ -6,6 +6,7 @@
  */
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
+import WebSocket from 'ws'
 
 process.env.PORT = '8788'           // port isolé pour les tests
 process.env.ADMIN_TOKEN = 'test-token'
@@ -32,6 +33,60 @@ async function get(path, headers = {}) {
   let json = null
   try { json = JSON.parse(body) } catch {}
   return { status: res.status, body, json }
+}
+
+async function openWs(path = '/signaling') {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(`ws://localhost:${process.env.PORT}${path}`)
+    ws.once('open', () => resolve(ws))
+    ws.once('error', reject)
+  })
+}
+
+async function waitForMessageType(ws, type, timeoutMs = 1000, predicate = null) {
+  return new Promise((resolve, reject) => {
+    const onMessage = (raw) => {
+      let msg = null
+      try { msg = JSON.parse(String(raw)) } catch { return }
+      if (msg?.type !== type) return
+      if (predicate && !predicate(msg)) return
+      cleanup()
+      resolve(msg)
+    }
+    const onTimeout = () => {
+      cleanup()
+      reject(new Error(`timeout waiting for message type "${type}"`))
+    }
+    const cleanup = () => {
+      ws.off('message', onMessage)
+      clearTimeout(timer)
+    }
+    const timer = setTimeout(onTimeout, timeoutMs)
+    ws.on('message', onMessage)
+  })
+}
+
+async function expectNoMessageType(ws, type, timeoutMs = 300, predicate = null) {
+  return new Promise((resolve, reject) => {
+    const onMessage = (raw) => {
+      let msg = null
+      try { msg = JSON.parse(String(raw)) } catch { return }
+      if (msg?.type !== type) return
+      if (predicate && !predicate(msg)) return
+      cleanup()
+      reject(new Error(`unexpected "${type}" message received`))
+    }
+    const onTimeout = () => {
+      cleanup()
+      resolve()
+    }
+    const cleanup = () => {
+      ws.off('message', onMessage)
+      clearTimeout(timer)
+    }
+    const timer = setTimeout(onTimeout, timeoutMs)
+    ws.on('message', onMessage)
+  })
 }
 
 test('GET /health → 200 avec payload attendu', async () => {
@@ -99,4 +154,54 @@ test('OPTIONS preflight répond 204', async () => {
     headers: { Origin: 'https://example.test' }
   })
   assert.equal(res.status, 204)
+})
+
+test('Refresh listener: la fermeture de l’ancienne socket ne supprime pas la nouvelle session', async () => {
+  const host = await openWs()
+  const listenerA = await openWs()
+  let listenerB = null
+
+  try {
+    const room = 'RFRSH1'
+    const listenerId = 'listener-refresh'
+
+    host.send(JSON.stringify({ type: 'join', room, pseudo: 'Host' }))
+    const hostWelcome = await waitForMessageType(host, 'welcome')
+    const hostId = hostWelcome.peerId
+
+    listenerA.send(JSON.stringify({
+      type: 'join',
+      room,
+      peerId: listenerId,
+      pseudo: 'Listener'
+    }))
+    await waitForMessageType(listenerA, 'welcome')
+    await waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === listenerId)
+
+    listenerB = await openWs()
+    listenerB.send(JSON.stringify({
+      type: 'join',
+      room,
+      peerId: listenerId,
+      pseudo: 'Listener'
+    }))
+    const refreshedWelcome = await waitForMessageType(listenerB, 'welcome')
+    assert.equal(refreshedWelcome.peerId, listenerId)
+
+    listenerA.close()
+    await expectNoMessageType(host, 'peer-left', 400, (msg) => msg.peerId === listenerId)
+
+    host.send(JSON.stringify({
+      type: 'signal',
+      to: listenerId,
+      data: { kind: 'offer', sdp: { type: 'offer', sdp: 'dummy' } }
+    }))
+    const relayedSignal = await waitForMessageType(listenerB, 'signal')
+    assert.equal(relayedSignal.from, hostId)
+    assert.equal(relayedSignal.data.kind, 'offer')
+  } finally {
+    host.close()
+    listenerA.close()
+    listenerB?.close()
+  }
 })
