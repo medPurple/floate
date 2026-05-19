@@ -254,7 +254,7 @@ function tick() {
   analyser.getByteFrequencyData(analyserData)
   const arr = new Array(BARS)
   const center = (BARS - 1) / 2
-  const half = BARS / 2
+  const half = center || 1
   for (let i = 0; i < BARS; i++) {
     const distFromCenter = Math.abs(i - center) / half
     const idx = Math.floor(Math.min(1, distFromCenter) * (analyserData.length - 1))
