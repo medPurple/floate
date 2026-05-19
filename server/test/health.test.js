@@ -36,7 +36,7 @@ async function get(path, headers = {}) {
 }
 
 async function openWs(path = '/signaling') {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${process.env.PORT}${path}`)
     ws.once('open', () => resolve(ws))
     ws.once('error', reject)
@@ -44,7 +44,7 @@ async function openWs(path = '/signaling') {
 }
 
 async function waitForMessageType(ws, type, timeoutMs = 1000, predicate = null) {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const onMessage = (raw) => {
       let msg = null
       try { msg = JSON.parse(String(raw)) } catch { return }
@@ -67,7 +67,7 @@ async function waitForMessageType(ws, type, timeoutMs = 1000, predicate = null) 
 }
 
 async function expectNoMessageType(ws, type, timeoutMs = 300, predicate = null) {
-  return await new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const onMessage = (raw) => {
       let msg = null
       try { msg = JSON.parse(String(raw)) } catch { return }

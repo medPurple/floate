@@ -327,12 +327,11 @@ wssSignaling.on('connection', (ws) => {
     if (!currentPeer || currentPeer.ws !== ws) return
 
     const wasHost = hostOf(room) === myId
-    const me = currentPeer
-    if (me) trackSessionClosed(me.joinedAt)
+    trackSessionClosed(currentPeer.joinedAt)
     room.delete(myId)
     room._streaming?.delete(myId)
 
-    if (me) trackEvent('leave', me.pseudo, room._name || myRoom)
+    trackEvent('leave', currentPeer.pseudo, room._name || myRoom)
 
     if (room.size === 0) {
       rooms.delete(myRoom)
