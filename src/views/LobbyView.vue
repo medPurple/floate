@@ -170,9 +170,14 @@ function closeHelp() {
         aria-modal="true"
         aria-labelledby="lobby-help-title"
         @click.self="closeHelp"
+        @keydown.esc="closeHelp"
+        tabindex="-1"
       >
         <article class="card lobby-help-card">
-          <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
+          <header class="lobby-help-header">
+            <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
+            <button type="button" class="lobby-help-close" @click="closeHelp" aria-label="Fermer l’aide">×</button>
+          </header>
           <ol class="lobby-help-steps">
             <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
             <li>Le host démarre la diffusion depuis son onglet navigateur.</li>
@@ -336,9 +341,26 @@ function closeHelp() {
   gap: var(--space-md);
 }
 
+.lobby-help-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
 .lobby-help-card h2 {
   margin: 0;
   font-size: var(--fs-h2);
+}
+
+.lobby-help-close {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
 }
 
 .lobby-help-steps {
