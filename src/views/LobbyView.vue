@@ -66,13 +66,16 @@ async function fetchPublicRooms() {
 
 onMounted(() => {
   try {
-    helpOpen.value = localStorage.getItem(HELP_STORAGE_KEY) !== '1'
+    helpOpen.value = localStorage.getItem(HELP_STORAGE_KEY) === null
   } catch {
     helpOpen.value = true
   }
-  if (helpOpen.value) window.addEventListener('keydown', handleHelpKeydown)
   fetchPublicRooms()
   publicRoomsTimer = setInterval(fetchPublicRooms, 15_000)
+})
+watch(helpOpen, (open) => {
+  if (open) window.addEventListener('keydown', handleHelpKeydown)
+  else window.removeEventListener('keydown', handleHelpKeydown)
 })
 onBeforeUnmount(() => {
   if (publicRoomsTimer) clearInterval(publicRoomsTimer)
@@ -136,17 +139,15 @@ function createRoom() {
 
 function openHelp() {
   helpOpen.value = true
-  window.addEventListener('keydown', handleHelpKeydown)
 }
 
 function closeHelp() {
   helpOpen.value = false
-  window.removeEventListener('keydown', handleHelpKeydown)
   try { localStorage.setItem(HELP_STORAGE_KEY, '1') } catch { /* */ }
 }
 
 function handleHelpKeydown(event) {
-  if (event.key === 'Escape' && helpOpen.value) closeHelp()
+  if (event.key === 'Escape') closeHelp()
 }
 </script>
 
@@ -182,7 +183,7 @@ function handleHelpKeydown(event) {
         <article class="card lobby-help-card">
           <header class="lobby-help-header">
             <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
-            <button type="button" class="lobby-help-close" @click="closeHelp">Fermer</button>
+            <button type="button" class="lobby-help-close" aria-label="Fermer la fenêtre d’aide" @click="closeHelp">Fermer</button>
           </header>
           <ol class="lobby-help-steps">
             <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
