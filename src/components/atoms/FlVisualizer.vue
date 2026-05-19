@@ -19,7 +19,7 @@ const props = defineProps({
   height: { type: Number, default: 80 }
 })
 
-const BARS = 48
+const BARS = 48 // garder un nombre pair pour une répartition symétrique centre → extérieur
 const RISE = 0.6
 const DECAY = 0.88
 
@@ -73,9 +73,14 @@ function draw(now) {
     grad.addColorStop(1, readToken('--accent-strong') || '#E76F51')
     ctx.fillStyle = grad
 
+    const half = BARS / 2
+    const centerLeft = half - 1
+
     for (let i = 0; i < BARS; i++) {
       const barH = Math.max(2, smoothed[i] * h)
-      const x = i * (barW + gap)
+      const offset = Math.floor(i / 2)
+      const barIndex = i % 2 === 0 ? centerLeft - offset : half + offset
+      const x = barIndex * (barW + gap)
       const y = (h - barH) / 2
       ctx.beginPath()
       const r = Math.min(barW / 2, 2)
