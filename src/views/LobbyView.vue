@@ -73,10 +73,6 @@ onMounted(() => {
   fetchPublicRooms()
   publicRoomsTimer = setInterval(fetchPublicRooms, 15_000)
 })
-watch(helpOpen, (open) => {
-  if (open) window.addEventListener('keydown', handleHelpKeydown)
-  else window.removeEventListener('keydown', handleHelpKeydown)
-})
 onBeforeUnmount(() => {
   if (publicRoomsTimer) clearInterval(publicRoomsTimer)
   window.removeEventListener('keydown', handleHelpKeydown)
@@ -149,6 +145,11 @@ function closeHelp() {
 function handleHelpKeydown(event) {
   if (event.key === 'Escape') closeHelp()
 }
+
+watch(helpOpen, (open) => {
+  if (open) window.addEventListener('keydown', handleHelpKeydown)
+  else window.removeEventListener('keydown', handleHelpKeydown)
+})
 </script>
 
 <template>
@@ -183,7 +184,7 @@ function handleHelpKeydown(event) {
         <article class="card lobby-help-card">
           <header class="lobby-help-header">
             <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
-            <button type="button" class="lobby-help-close" aria-label="Fermer la fenêtre d’aide" @click="closeHelp">Fermer</button>
+            <button type="button" class="lobby-help-close" @click="closeHelp">Fermer</button>
           </header>
           <ol class="lobby-help-steps">
             <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
@@ -367,7 +368,9 @@ function handleHelpKeydown(event) {
   font-size: 28px;
   line-height: 1;
   cursor: pointer;
-  padding: 0;
+  padding: 0 6px;
+  min-width: 44px;
+  min-height: 44px;
 }
 
 .lobby-help-steps {
