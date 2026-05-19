@@ -6,6 +6,7 @@
  */
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
+import { WebSocket } from 'ws'
 
 process.env.PORT = '8788'           // port isolé pour les tests
 process.env.ADMIN_TOKEN = 'test-token'
@@ -32,6 +33,43 @@ async function get(path, headers = {}) {
   let json = null
   try { json = JSON.parse(body) } catch {}
   return { status: res.status, body, json }
+}
+
+function onceMessage(ws) {
+  return new Promise((resolve, reject) => {
+    const onMessage = (raw) => {
+      cleanup()
+      resolve(JSON.parse(raw.toString()))
+    }
+    const onError = (err) => {
+      cleanup()
+      reject(err)
+    }
+    const onClose = () => {
+      cleanup()
+      reject(new Error('socket closed before message'))
+    }
+    const cleanup = () => {
+      ws.off('message', onMessage)
+      ws.off('error', onError)
+      ws.off('close', onClose)
+    }
+
+    ws.on('message', onMessage)
+    ws.on('error', onError)
+    ws.on('close', onClose)
+  })
+}
+
+async function joinRoom(room, peerId, pseudo) {
+  const ws = new WebSocket(`ws://localhost:${process.env.PORT}/signaling`)
+  await new Promise((resolve, reject) => {
+    ws.once('open', resolve)
+    ws.once('error', reject)
+  })
+  ws.send(JSON.stringify({ type: 'join', room, peerId, pseudo }))
+  const welcome = await onceMessage(ws)
+  return { ws, welcome }
 }
 
 test('GET /health → 200 avec payload attendu', async () => {
@@ -99,4 +137,52 @@ test('OPTIONS preflight répond 204', async () => {
     headers: { Origin: 'https://example.test' }
   })
   assert.equal(res.status, 204)
+})
+
+test('welcome expose la palette courante et un changement host est diffusé aux peers', async () => {
+  const room = `PAL${Date.now()}A`
+  const { ws: host, welcome: hostWelcome } = await joinRoom(room, 'host-a', 'Host')
+
+  assert.equal(hostWelcome.type, 'welcome')
+  assert.equal(hostWelcome.palette, 'ambiance-abricot')
+
+  const joined = onceMessage(host)
+  const { ws: listener, welcome: listenerWelcome } = await joinRoom(room, 'listener-a', 'Listener')
+
+  assert.equal(listenerWelcome.palette, 'ambiance-abricot')
+  assert.equal((await joined).type, 'peer-joined')
+
+  host.send(JSON.stringify({ type: 'palette-change', palette: 'lavande' }))
+
+  const hostPalette = await onceMessage(host)
+  const listenerPalette = await onceMessage(listener)
+
+  assert.deepEqual(hostPalette, { type: 'palette-changed', palette: 'lavande' })
+  assert.deepEqual(listenerPalette, { type: 'palette-changed', palette: 'lavande' })
+
+  host.close()
+  listener.close()
+})
+
+test('palette-change ignore les listeners et persiste pour les nouveaux arrivants', async () => {
+  const room = `PAL${Date.now()}B`
+  const { ws: host } = await joinRoom(room, 'host-b', 'Host')
+
+  const joined = onceMessage(host)
+  const { ws: listener } = await joinRoom(room, 'listener-b', 'Listener')
+  assert.equal((await joined).type, 'peer-joined')
+
+  listener.send(JSON.stringify({ type: 'palette-change', palette: 'lagon' }))
+  await new Promise(resolve => setTimeout(resolve, 75))
+
+  host.send(JSON.stringify({ type: 'palette-change', palette: 'foret' }))
+  await onceMessage(host)
+  await onceMessage(listener)
+
+  const { ws: newcomer, welcome } = await joinRoom(room, 'listener-c', 'Late listener')
+  assert.equal(welcome.palette, 'foret')
+
+  host.close()
+  listener.close()
+  newcomer.close()
 })

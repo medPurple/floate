@@ -16,6 +16,7 @@
 import http from 'node:http'
 import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
+import { DEFAULT_PALETTE_ID, isPaletteId } from '../src/lib/palettes.js'
 
 import {
   trackVisit, trackSessionClosed, trackEvent,
@@ -181,6 +182,7 @@ function getRoom(code) {
     const room = new Map()
     room._streaming = new Set()
     room._name = null
+    room._palette = DEFAULT_PALETTE_ID
     rooms.set(code, room)
   }
   return rooms.get(code)
@@ -263,7 +265,8 @@ wssSignaling.on('connection', (ws) => {
         peerId: myId,
         peers: publicPeers(room),
         hostId: hostOf(room),
-        roomName: room._name
+        roomName: room._name,
+        palette: room._palette || DEFAULT_PALETTE_ID
       }))
 
       const me = room.get(myId)
@@ -300,6 +303,17 @@ wssSignaling.on('connection', (ws) => {
       if (!room?.has(msg.newHostId)) return
       room._explicitHost = msg.newHostId
       broadcast(myRoom, { type: 'host-changed', hostId: msg.newHostId })
+    }
+
+    else if (msg.type === 'palette-change') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room) return
+      if (hostOf(room) !== myId) return
+      if (!isPaletteId(msg.palette)) return
+      if (room._palette === msg.palette) return
+      room._palette = msg.palette
+      broadcast(myRoom, { type: 'palette-changed', palette: room._palette })
     }
 
     else if (msg.type === 'stream-state') {

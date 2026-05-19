@@ -21,14 +21,17 @@ import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
 import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
 import FlAudioOutputPanel from '../components/molecules/FlAudioOutputPanel.vue'
 import FlVolumePanel from '../components/molecules/FlVolumePanel.vue'
+import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
 import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
 import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
 import FlStage from '../components/molecules/FlStage.vue'
 
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
+import { usePalette } from '../composables/usePalette.js'
 import { useRoomConnection } from '../composables/useRoomConnection.js'
 import { useDisplayCapture } from '../composables/useDisplayCapture.js'
+import { PALETTES } from '../lib/palettes.js'
 
 const props = defineProps({
   code: { type: String, required: true }
@@ -81,6 +84,8 @@ const roomConn = useRoomConnection({
   onFloorRequest: handleFloorRequest,
   onRemoteStream: handleRemoteStream
 })
+
+usePalette(roomConn.palette)
 
 // Si le host change, on met à jour le stream actif.
 watch(roomConn.hostId, (newHostId) => {
@@ -191,6 +196,10 @@ function acceptRequest(id) {
 
 function denyRequest(id) {
   floorRequests.value = floorRequests.value.filter(r => r.id !== id)
+}
+
+function onPaletteChange(id) {
+  roomConn.changePalette(id)
 }
 
 // --- Audio playback côté listener + setSinkId --------------------------
@@ -331,6 +340,13 @@ const isDev = import.meta.env?.DEV ?? false
           :disabled="roomConn.role.value === 'host'"
           :disabled-hint="roomConn.role.value === 'host' ? 'Sans effet pendant que tu diffuses.' : ''"
           @change="onVolumeChange"
+        />
+
+        <FlPalettePanel
+          v-if="roomConn.role.value === 'host'"
+          :palettes="PALETTES"
+          :selected-id="roomConn.palette.value"
+          @change="onPaletteChange"
         />
 
         <FlFloorRequestsPanel
