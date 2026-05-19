@@ -67,6 +67,7 @@ User=floate
 WorkingDirectory=/var/www/floate/server
 Environment=PORT=8787
 Environment=ADMIN_TOKEN=change-moi-en-quelque-chose-de-long
+Environment=CORS_ORIGIN=https://floate.tondomaine.com
 ExecStart=/usr/bin/node index.js
 Restart=on-failure
 RestartSec=5
@@ -279,12 +280,139 @@ dès que tu déploies pour de vrai.
 
 ---
 
-## 9. Checklist avant ouverture publique
+## 9. Variante : front sur Cloudflare Pages, back sur ton VPS
+
+C'est probablement la combinaison la plus simple : Cloudflare héberge
+le bundle statique avec CDN mondial + TLS auto + builds Git, et ton VPS
+ne fait tourner que le serveur de signaling (Node + Caddy + Let's Encrypt).
+
+```
+            Cloudflare Pages (front statique, CDN)
+            floate.tondomaine.com
+                          │
+                          │  WSS + HTTPS
+                          ▼
+            Ton VPS (Caddy → Node)
+            sig.tondomaine.com
+```
+
+### 9.1 Front sur Cloudflare Pages
+
+**Via le dashboard** :
+
+1. dash.cloudflare.com → Workers & Pages → Create → Pages → Connect to Git
+2. Choisis ton repo. Build settings :
+   - Framework preset : **Vite**
+   - Build command : `npm run build`
+   - Build output directory : `dist`
+   - Root directory : (vide ou `.`)
+   - Node version : `20`
+3. **Environment variables** (onglet Settings) — section *Production* :
+   ```
+   VITE_SIGNALING_URL = wss://sig.tondomaine.com
+   ```
+   À répéter en *Preview* si tu veux que les PR builds pointent ailleurs.
+4. Déploiement → CF te donne `floate.pages.dev`. Custom domain : ajoute
+   `floate.tondomaine.com`, CF te crée le CNAME et le cert.
+
+**Via CLI Wrangler** (si tu préfères) :
+
+```bash
+npm i -g wrangler
+wrangler pages project create floate
+echo "VITE_SIGNALING_URL=wss://sig.tondomaine.com" > .env.production
+npm run build
+wrangler pages deploy dist --project-name=floate
+```
+
+### 9.2 Côté back (VPS) — CORS strict
+
+Le serveur a une whitelist d'origines via `CORS_ORIGIN`. Mets-la dans
+ton unit systemd (et **pas `*`** en prod, surtout avec la console admin
+accessible publiquement) :
+
+```ini
+Environment=ADMIN_TOKEN=change-moi-en-quelque-chose-de-long
+Environment=CORS_ORIGIN=https://floate.tondomaine.com,https://floate.pages.dev
+```
+
+Sépare par virgules si tu as plusieurs origines légitimes (la prod et
+les preview builds CF, par exemple). Le serveur retournera le bon
+`Access-Control-Allow-Origin` selon l'origine de la requête, et refusera
+le WS upgrade pour tout autre site.
+
+### 9.3 DNS — proxy orange ou DNS only ?
+
+Tu as deux options pour `sig.tondomaine.com` :
+
+**A. DNS only (gris) — recommandé pour démarrer**
+Le record `A sig.tondomaine.com → IP du VPS` en mode "DNS only". Caddy
+gère le TLS sur ton VPS, le trafic est direct entre le client et toi.
+Pas de timeout WS, pas de surprise. C'est le plus simple.
+
+**B. Proxy Cloudflare (orange)**
+Tu actives le proxy pour profiter du DDoS protection et du caching. CF
+supporte les WebSockets sur le plan gratuit, **mais** :
+- timeout par défaut **100 secondes** sur le plan Free (la connexion WS
+  se ferme silencieusement après 100s d'inactivité). À toi de gérer
+  le heartbeat côté serveur ou de payer pour augmenter ce timeout.
+- ports HTTPS supportés : 443 uniquement sur Free. Caddy écoute déjà
+  là — pas de souci.
+- TLS terminé chez CF → ton Caddy peut rester en HTTPS aussi (full
+  strict, recommandé) ou en HTTP si tu fais confiance au lien CF→VPS.
+
+Si tu actives le proxy, ajoute aussi `Origin` aux headers que ton serveur
+voit (Cloudflare le passe tel quel, donc ça marche déjà). Pour le
+heartbeat, ajoute dans `useSignaling.js` un ping toutes les 30s :
+
+```js
+setInterval(() => send({ type: 'ping' }), 30_000)
+```
+
+et côté `server/index.js` un handler `if (msg.type === 'ping') return`
+qui consomme le message sans rien faire — ça suffit à garder la
+connexion vivante.
+
+### 9.4 Mixed content : le piège classique
+
+Si ton front est en `https://` (CF l'impose) et que tu pointes
+`VITE_SIGNALING_URL` sur `ws://` (sans S), le navigateur **bloque
+silencieusement** la connexion WS — pas de message d'erreur clair, juste
+une console qui dit "An insecure WebSocket connection may not be
+initiated from a page loaded over HTTPS".
+
+→ Toujours `wss://` quand le front est sur Cloudflare. Et pour
+`ADMIN_HTTP_URL` (dérivé automatiquement par `src/lib/config.js`),
+ça se traduit en `https://` côté admin REST. Vérifie que ton Caddy a
+bien le cert avant de pousser le front en prod.
+
+### 9.5 Pages preview, branches de feature
+
+Les builds de preview CF Pages ont des URLs en
+`floate-abcdef.<projet>.pages.dev`. Pour qu'elles puissent parler au
+même serveur de signaling, tu as deux options :
+
+- Wildcard dans la whitelist : `CORS_ORIGIN=https://floate.tondomaine.com,https://*.floate.pages.dev`
+  → ⚠️ le serveur actuel ne supporte pas les wildcards. Si tu en as
+  besoin, modifie `originAllowed()` dans `server/index.js` pour
+  matcher les patterns. Pas hyper compliqué : 4 lignes.
+- Ou tu pointes les previews sur un autre signaling (staging) avec
+  son propre token. Plus propre mais demande un second VPS / process.
+
+Le plus pragmatique au début : tu ne whiteliste que la prod et tu
+testes les previews en local avec `dev:all`.
+
+---
+
+## 10. Checklist avant ouverture publique
 
 - [ ] `ADMIN_TOKEN` changé pour quelque chose qui n'est pas dans git
-- [ ] `.env.production` n'est **pas** committé (présent dans .gitignore)
+- [ ] `CORS_ORIGIN` restreint aux origines réelles, **pas `*`**
+- [ ] `.env.production` / `.env.local` n'est **pas** committé (.gitignore)
 - [ ] Caddy renvoie bien `https://` (vérifie le redirect http→https)
 - [ ] `wss://sig.tondomaine.com` répond (test : DevTools → Network → WS)
 - [ ] `https://sig.tondomaine.com/health` retourne `{ ok: true }`
+- [ ] Côté front, `VITE_SIGNALING_URL` est en `wss://` (pas `ws://`) si servi en HTTPS
 - [ ] `/admin/stats` sans token affiche bien la page 403, pas un crash
+- [ ] Si front sur CF Pages : custom domain + cert OK, preview deploys whitelistés ou non selon ton process
 - [ ] Un test à 3 onglets dans 3 wifi différents montre que TURN est nécessaire (ou pas, selon ton public cible)

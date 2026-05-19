@@ -86,3 +86,17 @@ test('Route inconnue → 404', async () => {
   const { status } = await get('/this-route-does-not-exist')
   assert.equal(status, 404)
 })
+
+test('CORS : sans CORS_ORIGIN défini, Allow-Origin = *', async () => {
+  const res = await fetch(`http://localhost:${process.env.PORT}/health`)
+  // En l'absence d'env CORS_ORIGIN, le défaut est '*'.
+  assert.equal(res.headers.get('access-control-allow-origin'), '*')
+})
+
+test('OPTIONS preflight répond 204', async () => {
+  const res = await fetch(`http://localhost:${process.env.PORT}/health`, {
+    method: 'OPTIONS',
+    headers: { Origin: 'https://example.test' }
+  })
+  assert.equal(res.status, 204)
+})

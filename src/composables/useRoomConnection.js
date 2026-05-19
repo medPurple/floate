@@ -63,7 +63,7 @@ async function boostSenderBitrate(pc) {
   }
 }
 
-export function useRoomConnection({ code, pseudo, roomName = null, onFloorRequest, onRemoteStream }) {
+export function useRoomConnection({ code, pseudo, roomName = null, visibility = null, onFloorRequest, onRemoteStream }) {
   const { peerId } = useSession()
 
   // --- State exposé -------------------------------------------------
@@ -96,6 +96,13 @@ export function useRoomConnection({ code, pseudo, roomName = null, onFloorReques
       for (const track of localStream.value.getTracks()) {
         pc.addTrack(track, localStream.value)
       }
+    } else {
+      // Sinon on déclare explicitement qu'on veut recevoir de l'audio.
+      // Sans ce transceiver, l'offer générée n'a aucun m=audio, et le
+      // peer distant ne peut PAS y ajouter d'audio dans son answer —
+      // c'est ce qui faisait que les listeners arrivés après le clic
+      // "Démarrer la diffusion" n'entendaient rien.
+      pc.addTransceiver('audio', { direction: 'recvonly' })
     }
 
     pc.addEventListener('icecandidate', (e) => {
@@ -292,7 +299,8 @@ export function useRoomConnection({ code, pseudo, roomName = null, onFloorReques
       room: code,
       peerId: peerId.value,
       pseudo,
-      roomName  // posé uniquement si on est le premier
+      roomName,    // posés uniquement si on est le premier (sinon le serveur ignore)
+      visibility
     })
   }
 

@@ -77,6 +77,7 @@ const roomConn = useRoomConnection({
   code: props.code,
   pseudo: storedPseudo.value,
   roomName: queryName || null,
+  visibility: queryVis,
   onFloorRequest: handleFloorRequest,
   onRemoteStream: handleRemoteStream
 })

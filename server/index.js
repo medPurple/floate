@@ -28,6 +28,24 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin'
 const MAX_PEERS_PER_ROOM = 8
 const VERSION = '0.2.0'
 
+// Origines autorisées pour CORS et pour la vérif WS upgrade.
+// '*' en dev (défaut), liste séparée par virgules en prod :
+//   CORS_ORIGIN="https://floate.pages.dev,https://floate.tondomaine.com"
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || '*')
+  .split(',').map(s => s.trim()).filter(Boolean)
+
+function originAllowed(origin) {
+  if (!origin) return true                    // requests same-origin / curl
+  if (CORS_ORIGINS.includes('*')) return true
+  return CORS_ORIGINS.includes(origin)
+}
+
+function pickAllowOrigin(req) {
+  if (CORS_ORIGINS.includes('*')) return '*'
+  const o = req.headers.origin
+  return o && CORS_ORIGINS.includes(o) ? o : CORS_ORIGINS[0] || 'null'
+}
+
 // Map<roomCode, Map<peerId, { ws, pseudo, joinedAt }>>
 const rooms = new Map()
 
@@ -35,14 +53,15 @@ const rooms = new Map()
    HTTP : health + admin REST
    ============================================================ */
 
-function setCors(res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+function setCors(req, res) {
+  res.setHeader('Access-Control-Allow-Origin', pickAllowOrigin(req))
+  res.setHeader('Vary', 'Origin')
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 }
 
-function sendJson(res, status, body) {
-  setCors(res)
+function sendJson(req, res, status, body) {
+  setCors(req, res)
   res.writeHead(status, { 'Content-Type': 'application/json' })
   res.end(JSON.stringify(body))
 }
@@ -57,7 +76,7 @@ function checkAdmin(req) {
 
 const httpServer = http.createServer((req, res) => {
   if (req.method === 'OPTIONS') {
-    setCors(res)
+    setCors(req, res)
     res.writeHead(204)
     return res.end()
   }
@@ -65,12 +84,12 @@ const httpServer = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x')
 
   if (req.method === 'GET' && url.pathname === '/health') {
-    return sendJson(res, 200, buildHealth())
+    return sendJson(req, res, 200, buildHealth())
   }
 
   if (req.method === 'GET' && url.pathname === '/admin/api/snapshot') {
-    if (!checkAdmin(req)) return sendJson(res, 401, { error: 'unauthorized' })
-    return sendJson(res, 200, {
+    if (!checkAdmin(req)) return sendJson(req, res, 401, { error: 'unauthorized' })
+    return sendJson(req, res, 200, {
       ...snapshot(rooms),
       topRooms: topRooms(rooms),
       events: recentEvents()
@@ -78,13 +97,35 @@ const httpServer = http.createServer((req, res) => {
   }
 
   if (req.method === 'GET' && url.pathname === '/admin/api/events') {
-    if (!checkAdmin(req)) return sendJson(res, 401, { error: 'unauthorized' })
-    return sendJson(res, 200, { events: recentEvents(50) })
+    if (!checkAdmin(req)) return sendJson(req, res, 401, { error: 'unauthorized' })
+    return sendJson(req, res, 200, { events: recentEvents(50) })
+  }
+
+  // Endpoint public : la liste des rooms publiques actives.
+  // Pas d'auth, c'est un annuaire — comme la section "Rooms publiques en
+  // ce moment" du Lobby (§4.1 du DS).
+  if (req.method === 'GET' && url.pathname === '/api/public-rooms') {
+    return sendJson(req, res, 200, { rooms: listPublicRooms() })
   }
 
   res.writeHead(404)
   res.end('Not found')
 })
+
+function listPublicRooms() {
+  const out = []
+  for (const [code, room] of rooms) {
+    if (room._visibility !== 'public') continue
+    out.push({
+      code,
+      name: room._name || `Room ${code}`,
+      participants: room.size
+    })
+  }
+  // Trier par activité décroissante
+  out.sort((a, b) => b.participants - a.participants)
+  return out
+}
 
 function buildHealth() {
   let usersOnline = 0
@@ -107,6 +148,14 @@ const wssSignaling = new WebSocketServer({ noServer: true })
 const wssAdmin = new WebSocketServer({ noServer: true })
 
 httpServer.on('upgrade', (req, socket, head) => {
+  // Vérif d'origine : protège contre les attaques cross-site WS depuis
+  // un autre site qui aurait ouvert une socket à ta place.
+  if (!originAllowed(req.headers.origin)) {
+    socket.write('HTTP/1.1 403 Forbidden\r\n\r\n')
+    socket.destroy()
+    return
+  }
+
   const url = new URL(req.url, 'http://x')
 
   if (url.pathname === '/admin/stream') {
@@ -201,9 +250,12 @@ wssSignaling.on('connection', (ws) => {
         joinedAt: Date.now()
       })
 
-      // Pose le nom (uniquement à la création, le premier décide).
-      if (isFirst && typeof msg.roomName === 'string') {
-        room._name = msg.roomName.slice(0, 64)
+      // Pose le nom et la visibilité (uniquement à la création, le premier décide).
+      if (isFirst) {
+        if (typeof msg.roomName === 'string') {
+          room._name = msg.roomName.slice(0, 64)
+        }
+        room._visibility = msg.visibility === 'public' ? 'public' : 'private'
       }
 
       ws.send(JSON.stringify({
@@ -324,6 +376,7 @@ httpServer.listen(PORT, () => {
   console.log(`[floate] http://localhost:${PORT}    (health + admin REST)`)
   console.log(`[floate] ws://localhost:${PORT}      (signaling mesh)`)
   console.log(`[floate] ws://localhost:${PORT}/admin/stream  (admin push, token requis)`)
+  console.log(`[floate] CORS_ORIGIN = ${CORS_ORIGINS.join(', ')}`)
   console.log(`[floate] max ${MAX_PEERS_PER_ROOM} peers/room — version ${VERSION}`)
 })
 
