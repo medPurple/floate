@@ -326,11 +326,13 @@ const isDev = import.meta.env?.DEV ?? false
       />
 
       <aside class="room-sidebar" aria-label="Panneaux de la room">
-        <!-- Ordre §4.5 :
+        <!-- Ordre §4.5 (+ palette host) :
              1. Code (si privée)
              2. Sortie audio
-             3. Demandes de main (host + pending > 0)
-             4. Participants
+             3. Volume
+             4. Palette (host)
+             5. Demandes de main (host + pending > 0)
+             6. Participants
         -->
         <FlInvitePanel v-if="visibility === 'private'" :code="code" />
 
