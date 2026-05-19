@@ -4,8 +4,7 @@
  * doit pouvoir être servie statiquement, y compris derrière une URL
  * d'invitation copiée-collée).
  *
- *   /         → Explication (but + fonctionnement)
- *   /lobby    → Lobby (entrée + création de room)
+ *   /         → Lobby (entrée + création de room)
  *   /r/:code  → Room (écoute / diffusion)
  */
 import { createRouter, createWebHashHistory } from 'vue-router'
@@ -13,15 +12,9 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: 'floate — Comment ça marche' }
-  },
-  {
-    path: '/lobby',
     name: 'lobby',
     component: () => import('../views/LobbyView.vue'),
-    meta: { title: 'floate — Lobby' }
+    meta: { title: 'floate' }
   },
   {
     path: '/r/:code',

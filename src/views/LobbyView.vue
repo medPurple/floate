@@ -22,6 +22,7 @@ import { ADMIN_HTTP_URL } from '../lib/config.js'
 const router = useRouter()
 const { push } = useToasts()
 const session = useSession()
+const HELP_STORAGE_KEY = 'floate.lobby-help-seen'
 
 // État du formulaire principal — pseudo pré-rempli si déjà choisi
 // dans cet onglet (sessionStorage).
@@ -35,6 +36,7 @@ watch(pseudo, (val) => session.setPseudo(val))
 const creating = ref(false)
 const roomName = ref('')
 const visibility = ref('private')
+const helpOpen = ref(false)
 
 const visibilityOptions = [
   { label: 'Publique', value: 'public' },
@@ -63,6 +65,11 @@ async function fetchPublicRooms() {
 }
 
 onMounted(() => {
+  try {
+    helpOpen.value = localStorage.getItem(HELP_STORAGE_KEY) !== '1'
+  } catch {
+    helpOpen.value = true
+  }
   fetchPublicRooms()
   publicRoomsTimer = setInterval(fetchPublicRooms, 15_000)
 })
@@ -124,6 +131,15 @@ function createRoom() {
     query: { name: trimmed, v: visibility.value }
   })
 }
+
+function openHelp() {
+  helpOpen.value = true
+}
+
+function closeHelp() {
+  helpOpen.value = false
+  try { localStorage.setItem(HELP_STORAGE_KEY, '1') } catch { /* */ }
+}
 </script>
 
 <template>
@@ -131,10 +147,36 @@ function createRoom() {
     <header class="lobby-top">
       <span class="brand">floate</span>
       <div class="lobby-meta">
-        <RouterLink class="lobby-help-link" :to="{ name: 'home' }">Comment ça marche ?</RouterLink>
+        <button type="button" class="lobby-help-link" @click="openHelp">Comment ça marche ?</button>
         <span class="version">v0.1</span>
       </div>
     </header>
+
+    <transition name="fl-fade">
+      <section
+        v-if="helpOpen"
+        class="lobby-help-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="lobby-help-title"
+        @click.self="closeHelp"
+      >
+        <article class="card lobby-help-card">
+          <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
+          <ol class="lobby-help-steps">
+            <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
+            <li>Le host démarre la diffusion depuis son onglet navigateur.</li>
+            <li>Les invités écoutent en direct, sans rien installer.</li>
+          </ol>
+          <p class="lobby-help-note">
+            Pour diffuser l'audio d'un onglet, utilise Chrome ou Edge et coche « Partager l'audio de l'onglet ».
+          </p>
+          <div class="lobby-help-actions">
+            <FlButton variant="secondary" @click="closeHelp">J'ai compris</FlButton>
+          </div>
+        </article>
+      </section>
+    </transition>
 
     <section class="hero">
       <svg class="hero-mark" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -258,12 +300,55 @@ function createRoom() {
 }
 
 .lobby-help-link {
+  background: none;
+  border: 0;
+  padding: 0;
   color: var(--text-dim);
   font-size: var(--fs-mini);
-  text-decoration: none;
+  cursor: pointer;
 }
 
 .lobby-help-link:hover { color: var(--accent); }
+
+.lobby-help-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  padding: var(--space-xl);
+}
+
+.lobby-help-card {
+  width: min(560px, 100%);
+  display: grid;
+  gap: var(--space-md);
+}
+
+.lobby-help-card h2 {
+  margin: 0;
+  font-size: var(--fs-h2);
+}
+
+.lobby-help-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: var(--space-sm);
+  color: var(--text-dim);
+}
+
+.lobby-help-note {
+  margin: 0;
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.lobby-help-actions {
+  display: flex;
+  justify-content: flex-end;
+}
 
 .brand {
   font-size: 22px;
