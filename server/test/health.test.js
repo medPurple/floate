@@ -38,8 +38,20 @@ async function get(path, headers = {}) {
 async function openWs(path = '/signaling') {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${process.env.PORT}${path}`)
-    ws.once('open', () => resolve(ws))
-    ws.once('error', reject)
+    const onOpen = () => {
+      cleanup()
+      resolve(ws)
+    }
+    const onError = (err) => {
+      cleanup()
+      reject(err)
+    }
+    const cleanup = () => {
+      ws.off('open', onOpen)
+      ws.off('error', onError)
+    }
+    ws.on('open', onOpen)
+    ws.on('error', onError)
   })
 }
 
