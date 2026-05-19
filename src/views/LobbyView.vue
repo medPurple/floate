@@ -130,7 +130,10 @@ function createRoom() {
   <main class="lobby">
     <header class="lobby-top">
       <span class="brand">floate</span>
-      <span class="version">v0.1</span>
+      <div class="lobby-meta">
+        <RouterLink class="lobby-help-link" :to="{ name: 'home' }">Comment ça marche ?</RouterLink>
+        <span class="version">v0.1</span>
+      </div>
     </header>
 
     <section class="hero">
@@ -247,6 +250,20 @@ function createRoom() {
   justify-content: space-between;
   align-items: baseline;
 }
+
+.lobby-meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
+}
+
+.lobby-help-link {
+  color: var(--text-dim);
+  font-size: var(--fs-mini);
+  text-decoration: none;
+}
+
+.lobby-help-link:hover { color: var(--accent); }
 
 .brand {
   font-size: 22px;
