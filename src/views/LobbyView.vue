@@ -8,7 +8,7 @@
     en variant="secondary" pour laisser "Créer la room" être la primary.
 -->
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 
 import FlButton from '../components/atoms/FlButton.vue'
@@ -17,6 +17,7 @@ import FlToggle from '../components/atoms/FlToggle.vue'
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
 import { newCode, normalizeCode } from '../lib/code.js'
+import { ADMIN_HTTP_URL } from '../lib/config.js'
 
 const router = useRouter()
 const { push } = useToasts()
@@ -43,11 +44,31 @@ const visibilityOptions = [
 // La règle d'or impose une seule btn-primary visible à la fois.
 const joinVariant = computed(() => creating.value ? 'secondary' : 'primary')
 
-// Mock — vraies rooms publiques viendront du signaling.
-const publicRooms = [
-  { name: 'Lo-fi du matin', participants: 3, code: 'AKZ-394' },
-  { name: "Vinyles d'amis", participants: 2, code: 'MTR-7K2' }
-]
+// Rooms publiques en temps réel — fetch toutes les 15s.
+const publicRooms = ref([])
+const publicRoomsLoading = ref(true)
+let publicRoomsTimer = null
+
+async function fetchPublicRooms() {
+  try {
+    const res = await fetch(`${ADMIN_HTTP_URL}/api/public-rooms`)
+    if (!res.ok) return
+    const data = await res.json()
+    publicRooms.value = data.rooms || []
+  } catch {
+    // silencieux : pas dramatique, on retentera
+  } finally {
+    publicRoomsLoading.value = false
+  }
+}
+
+onMounted(() => {
+  fetchPublicRooms()
+  publicRoomsTimer = setInterval(fetchPublicRooms, 15_000)
+})
+onBeforeUnmount(() => {
+  if (publicRoomsTimer) clearInterval(publicRoomsTimer)
+})
 
 function requirePseudo() {
   if (!pseudo.value.trim()) {
@@ -191,11 +212,11 @@ function createRoom() {
       </transition>
     </section>
 
-    <section v-if="publicRooms.length" class="public-rooms">
+    <section v-if="publicRooms.length || !publicRoomsLoading" class="public-rooms">
       <h3 class="panel-title">
         Rooms publiques en ce moment ({{ publicRooms.length }})
       </h3>
-      <ul class="rooms-list">
+      <ul v-if="publicRooms.length" class="rooms-list">
         <li v-for="room in publicRooms" :key="room.code">
           <button class="room-item" type="button" @click="joinPublic(room)">
             <span class="room-name">{{ room.name }}</span>
@@ -204,6 +225,9 @@ function createRoom() {
           </button>
         </li>
       </ul>
+      <p v-else class="rooms-empty">
+        Aucune room publique pour l'instant. Crée la première.
+      </p>
     </section>
   </main>
 </template>
@@ -386,6 +410,16 @@ function createRoom() {
 
 .room-item:hover {
   border-color: var(--accent);
+}
+
+.rooms-empty {
+  text-align: center;
+  font-size: var(--fs-body-sm);
+  color: var(--text-faint);
+  padding: var(--space-lg);
+  background: var(--bg-elev);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
 }
 
 .room-name { font-weight: 500; }

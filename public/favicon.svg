@@ -1,0 +1,15 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F4A261"/>
+      <stop offset="100%" stop-color="#E76F51"/>
+    </linearGradient>
+  </defs>
+  <!-- Pastille nuit, arrondie comme un app icon iOS -->
+  <rect width="64" height="64" rx="14" fill="#18171F"/>
+  <!-- Onde stylée, signature visuelle du Lobby -->
+  <g stroke="url(#g)" stroke-width="4" stroke-linecap="round" fill="none">
+    <path d="M 10 32 Q 19 16, 28 32 T 46 32 T 64 32" opacity="0.95"/>
+    <path d="M 0 32 Q 8 48, 16 32 T 34 32 T 52 32" opacity="0.55"/>
+  </g>
+</svg>
