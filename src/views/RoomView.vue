@@ -386,7 +386,7 @@ const isDev = import.meta.env?.DEV ?? false
               rel="noopener noreferrer"
               aria-label="Ouvrir le lien du son (nouvel onglet)"
             >
-              {{ roomConn.hostSharedLink.value }}
+              {{ roomConn.hostSharedLink.value }} <span class="fl-shared-link-note">(nouvel onglet)</span>
             </a>
             <p v-else class="fl-shared-link-empty">
               Le host n'a pas encore partagé de lien.
@@ -472,6 +472,11 @@ const isDev = import.meta.env?.DEV ?? false
 }
 
 .fl-shared-link-empty {
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.fl-shared-link-note {
   font-size: var(--fs-mini);
   color: var(--text-faint);
 }
