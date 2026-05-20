@@ -5,6 +5,7 @@ const PALETTE_TOKENS = [
   ['--accent', 'accent'],
   ['--accent-soft', 'accentSoft'],
   ['--accent-strong', 'accentStrong'],
+  ['--accent-strong-hover', 'accentStrongHover'],
   ['--text-on-accent', 'textOnAccent']
 ]
 

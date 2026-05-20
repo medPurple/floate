@@ -6,6 +6,7 @@ const RAW_PALETTES = [
     label: 'Ambiance Abricot',
     accent: '#F4A261',
     accentStrong: '#E76F51',
+    accentStrongHover: '#D96344',
     textOnAccent: BASE_TEXT_ON_ACCENT
   },
   {
@@ -13,6 +14,7 @@ const RAW_PALETTES = [
     label: 'Crépuscule',
     accent: '#F08FA3',
     accentStrong: '#D44A6F',
+    accentStrongHover: '#BE3B5E',
     textOnAccent: '#FFF4F7'
   },
   {
@@ -20,6 +22,7 @@ const RAW_PALETTES = [
     label: 'Forêt',
     accent: '#9CC4A1',
     accentStrong: '#5B8C6F',
+    accentStrongHover: '#4A785E',
     textOnAccent: '#F2FBF4'
   },
   {
@@ -27,6 +30,7 @@ const RAW_PALETTES = [
     label: 'Lavande',
     accent: '#C1A8E0',
     accentStrong: '#8E6CB8',
+    accentStrongHover: '#7C5AA8',
     textOnAccent: '#F7F2FF'
   },
   {
@@ -34,6 +38,7 @@ const RAW_PALETTES = [
     label: 'Lagon',
     accent: '#7BC4D1',
     accentStrong: '#4F8FA3',
+    accentStrongHover: '#437E90',
     textOnAccent: '#F2FCFF'
   }
 ]

@@ -41,7 +41,7 @@ defineEmits(['leave'])
   justify-content: space-between;
   gap: var(--space-lg);
   padding: 18px 28px;
-  background: rgba(14, 13, 18, 0.6);
+  background: var(--glass-bg);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);

@@ -13,6 +13,10 @@
   --bg-elev: #18171F;
   --bg-elev-2: #221F2B;
   --border: #2A2735;
+  --bg-glow-1: #2a1f2e;
+  --bg-glow-2: #1a2330;
+  --glass-bg: rgba(14, 13, 18, 0.6);
+  --overlay-bg: rgba(0, 0, 0, 0.45);
 
   --text: #ECE9F1;
   --text-dim: #9B96AA;
@@ -22,6 +26,7 @@
   --accent: #F4A261;
   --accent-soft: #F4A26122;        /* abricot 13% */
   --accent-strong: #E76F51;        /* CTA principal uniquement */
+  --accent-strong-hover: #D96344;
 
   --live: #EF476F;                 /* exclusif à l'état "ça diffuse" */
   --live-bg: rgba(239, 71, 111, 0.12);
@@ -88,6 +93,29 @@
   --stage-visualizer-w: 420px;
   --stage-visualizer-h: 80px;
   --breakpoint-room: 900px;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f6f2ef;
+    --bg-elev: #fffbf8;
+    --bg-elev-2: #f3ece7;
+    --border: #ddd2ca;
+
+    --text: #2e2735;
+    --text-dim: #5d5268;
+    --text-faint: #7d7088;
+
+    --good: #4f9b6d;
+    --shadow: 0 10px 24px rgba(25, 20, 30, 0.12);
+
+    --bg-glow-1: color-mix(in srgb, var(--accent) 24%, #ffffff 76%);
+    --bg-glow-2: color-mix(in srgb, var(--accent-strong) 16%, #f3f8ff 84%);
+    --glass-bg: rgba(255, 250, 246, 0.72);
+    --overlay-bg: rgba(46, 39, 53, 0.34);
+    color-scheme: light;
+  }
 }
 
 /* -------------------------------------------------------------
@@ -108,8 +136,8 @@ body {
   line-height: 1.5;
   color: var(--text);
   background:
-    radial-gradient(1200px 800px at 80% -10%, #2a1f2e 0%, transparent 60%),
-    radial-gradient(900px 700px at -10% 110%, #1a2330 0%, transparent 55%),
+    radial-gradient(1200px 800px at 80% -10%, var(--bg-glow-1) 0%, transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, var(--bg-glow-2) 0%, transparent 55%),
     var(--bg);
   background-attachment: fixed;
   min-height: 100dvh;
@@ -181,7 +209,7 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
   background: var(--accent-strong);
   color: var(--text-on-accent);
 }
-.btn-primary:hover { background: #d96344; }
+.btn-primary:hover { background: var(--accent-strong-hover); }
 
 .btn-secondary {
   background: var(--bg-elev-2);

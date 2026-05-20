@@ -334,7 +334,7 @@ watch(helpOpen, (open) => {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--overlay-bg);
   display: grid;
   place-items: center;
   padding: var(--space-xl);
