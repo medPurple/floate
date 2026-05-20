@@ -32,7 +32,7 @@ import { ICE_SERVERS } from '../lib/config.js'
 
 // Booster Opus pour la musique : 256kbps maxBitrate, stereo on via SDP.
 const OPUS_MAX_BITRATE = 256_000
-const MAX_WISHLIST_ITEMS = 200
+const MAX_MUSIC_WISHLIST_ITEMS = 200
 
 function enableStereoOpus(sdp) {
   // Activer fmtp stereo=1; sprop-stereo=1; maxaveragebitrate sur Opus.
@@ -89,12 +89,15 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   const remoteStreams = new Map()
   /** Le stream local (host uniquement, null sinon) */
   const localStream = ref(null)
+  let wishlistIdCounter = 0
 
   function createWishlistItemId() {
-    if (typeof crypto?.randomUUID === 'function') {
-      return `wish-${crypto.randomUUID()}`
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return `wish-${globalThis.crypto.randomUUID()}`
     }
-    return `wish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    wishlistIdCounter += 1
+    const peerPart = String(peerId.value || 'peer').replace(/[^a-z0-9]/gi, '').slice(0, 12)
+    return `wish-${Date.now()}-${peerPart}-${wishlistIdCounter}`
   }
 
   function makePC(remotePeerId) {
@@ -283,6 +286,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   }
 
   function addMusicWishlistItem({ url, addedById, addedBy }) {
+    if (musicWishlist.value.length >= MAX_MUSIC_WISHLIST_ITEMS) {
+      return { ok: false, reason: 'limit-reached' }
+    }
     const normalized = normalizeYoutubeLink(url)
     if (!normalized.ok) return normalized
     if (musicWishlist.value.some(item => item.url === normalized.url)) {
@@ -295,7 +301,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
       addedBy,
       reactions: { up: [], down: [] }
     }
-    musicWishlist.value = [next, ...musicWishlist.value]
+    musicWishlist.value.unshift(next)
     broadcastMusicWishlist()
     return { ok: true, item: next }
   }
@@ -469,7 +475,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   }
 
   function addMusicWishlistLink(raw) {
-    if (musicWishlist.value.length >= MAX_WISHLIST_ITEMS) {
+    if (musicWishlist.value.length >= MAX_MUSIC_WISHLIST_ITEMS) {
       return { ok: false, reason: 'limit-reached' }
     }
     const normalized = normalizeYoutubeLink(raw)

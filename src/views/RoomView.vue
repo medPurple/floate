@@ -231,7 +231,7 @@ function addMusicWishlistLink() {
 function reactToWishlist(itemId, reaction) {
   const result = roomConn.reactToMusicWishlist(itemId, reaction)
   if (!result.ok && result.reason === 'not-found') {
-    push({ kind: 'info', message: 'Ce lien n\'est plus disponible.' })
+    push({ kind: 'info', message: "Ce lien n'est plus disponible." })
   }
 }
 
@@ -431,7 +431,7 @@ const isDev = import.meta.env?.DEV ?? false
             label="Lien YouTube"
             type="url"
             placeholder="https://youtube.com/..."
-            hint="Visible par tous. Chaque personne peut voter + ou -."
+            hint="Visible par tout le monde. Chaque personne peut voter + ou -."
           />
           <div class="fl-wishlist-actions">
             <FlButton variant="secondary" @click="addMusicWishlistLink">
