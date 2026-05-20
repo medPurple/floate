@@ -181,6 +181,7 @@ function leave() {
 }
 
 const hostSharedLinkDraft = ref('')
+const musicWishlistDraft = ref('')
 
 watch(() => roomConn.hostSharedLink.value, (url) => {
   hostSharedLinkDraft.value = url || ''
@@ -198,6 +199,46 @@ function saveHostSharedLink() {
   if (result.reason === 'invalid-url') {
     push({ kind: 'error', message: 'Lien invalide. Utilise une URL http(s).' })
   }
+}
+
+function addMusicWishlistLink() {
+  const result = roomConn.addMusicWishlistLink(musicWishlistDraft.value)
+  if (result.ok) {
+    musicWishlistDraft.value = ''
+    push({
+      kind: 'success',
+      message: result.pending ? 'Proposition envoyée.' : 'Lien ajouté à la liste.'
+    })
+    return
+  }
+  if (result.reason === 'duplicate') {
+    push({ kind: 'info', message: 'Ce lien est déjà dans la liste.' })
+    return
+  }
+  if (result.reason === 'not-youtube') {
+    push({ kind: 'error', message: 'Utilise un lien YouTube (youtube.com ou youtu.be).' })
+    return
+  }
+  if (result.reason === 'empty' || result.reason === 'invalid-url') {
+    push({ kind: 'error', message: 'Lien invalide. Utilise une URL YouTube http(s).' })
+    return
+  }
+  if (result.reason === 'limit-reached') {
+    push({ kind: 'error', message: 'La liste est pleine.' })
+  }
+}
+
+function reactToWishlist(itemId, reaction) {
+  const result = roomConn.reactToMusicWishlist(itemId, reaction)
+  if (!result.ok && result.reason === 'not-found') {
+    push({ kind: 'info', message: 'Ce lien n\'est plus disponible.' })
+  }
+}
+
+function myWishlistReaction(item) {
+  if (item.reactions.up.includes(peerId.value)) return 'up'
+  if (item.reactions.down.includes(peerId.value)) return 'down'
+  return null
 }
 
 // --- Demandes de main : décisions du host ------------------------------
@@ -383,6 +424,56 @@ const isDev = import.meta.env?.DEV ?? false
           </template>
         </section>
 
+        <section class="panel fl-wishlist">
+          <h3 class="panel-title">Liste de souhaits musique</h3>
+          <FlInput
+            v-model="musicWishlistDraft"
+            label="Lien YouTube"
+            type="url"
+            placeholder="https://youtube.com/..."
+            hint="Visible par tous. Chaque personne peut voter + ou -."
+          />
+          <div class="fl-wishlist-actions">
+            <FlButton variant="secondary" @click="addMusicWishlistLink">
+              Proposer
+            </FlButton>
+          </div>
+
+          <ul v-if="roomConn.musicWishlist.value.length" class="fl-wishlist-list">
+            <li v-for="item in roomConn.musicWishlist.value" :key="item.id" class="fl-wishlist-item">
+              <a
+                class="fl-wishlist-anchor"
+                :href="item.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ouvrir le lien YouTube (nouvel onglet)"
+              >
+                {{ item.url }}
+              </a>
+              <p class="fl-wishlist-meta">Ajouté par {{ item.addedBy }}</p>
+              <div class="fl-wishlist-reactions">
+                <FlButton
+                  variant="secondary"
+                  :aria-pressed="myWishlistReaction(item) === 'up'"
+                  @click="reactToWishlist(item.id, 'up')"
+                >
+                  👍 {{ item.reactions.up.length }}
+                </FlButton>
+                <FlButton
+                  variant="secondary"
+                  :aria-pressed="myWishlistReaction(item) === 'down'"
+                  @click="reactToWishlist(item.id, 'down')"
+                >
+                  👎 {{ item.reactions.down.length }}
+                </FlButton>
+              </div>
+            </li>
+          </ul>
+          <p v-else class="fl-wishlist-empty">
+            Pas encore de proposition.
+          </p>
+        </section>
+
         <FlVolumePanel
           :disabled="roomConn.role.value === 'host'"
           :disabled-hint="roomConn.role.value === 'host' ? 'Sans effet pendant que tu diffuses.' : ''"
@@ -454,6 +545,57 @@ const isDev = import.meta.env?.DEV ?? false
 }
 
 .fl-shared-link-empty {
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.fl-wishlist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.fl-wishlist-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fl-wishlist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.fl-wishlist-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elev);
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fl-wishlist-anchor {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.fl-wishlist-meta {
+  margin: 0;
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.fl-wishlist-reactions {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.fl-wishlist-empty {
   font-size: var(--fs-mini);
   color: var(--text-faint);
 }

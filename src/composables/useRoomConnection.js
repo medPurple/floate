@@ -79,6 +79,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     peers.value.filter(p => p.id !== hostId.value).length
   )
   const hostSharedLink = ref('')
+  const musicWishlist = ref([])
 
   // --- WebRTC interne ----------------------------------------------
   /** Map<peerId, RTCPeerConnection> */
@@ -180,6 +181,26 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
         if (from !== hostId.value) return
         hostSharedLink.value = typeof data.url === 'string' ? data.url : ''
       }
+      else if (data.kind === 'music-wishlist-sync') {
+        if (from !== hostId.value) return
+        musicWishlist.value = sanitizeMusicWishlist(data.items)
+      }
+      else if (data.kind === 'music-wishlist-add-request') {
+        if (role.value !== 'host') return
+        addMusicWishlistItem({
+          url: data.url,
+          addedById: from,
+          addedBy: peers.value.find(p => p.id === from)?.pseudo || 'Anonyme'
+        })
+      }
+      else if (data.kind === 'music-wishlist-react-request') {
+        if (role.value !== 'host') return
+        applyMusicWishlistReaction({
+          itemId: data.itemId,
+          reaction: data.reaction,
+          voterId: from
+        })
+      }
     } catch (err) {
       console.error('[room] handleSignal', data.kind, err)
     }
@@ -195,6 +216,109 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     } catch {
       return { ok: false, reason: 'invalid-url' }
     }
+  }
+
+  function normalizeYoutubeLink(raw) {
+    const input = String(raw || '').trim()
+    if (!input) return { ok: false, reason: 'empty' }
+    try {
+      const u = new URL(input)
+      if (!['http:', 'https:'].includes(u.protocol)) return { ok: false, reason: 'invalid-url' }
+      const host = u.hostname.toLowerCase()
+      const isYoutube =
+        host === 'youtu.be' ||
+        host === 'youtube.com' ||
+        host.endsWith('.youtube.com')
+      if (!isYoutube) return { ok: false, reason: 'not-youtube' }
+      return { ok: true, url: u.href }
+    } catch {
+      return { ok: false, reason: 'invalid-url' }
+    }
+  }
+
+  function sanitizeMusicWishlist(items) {
+    if (!Array.isArray(items)) return []
+    return items
+      .map((item) => {
+        const up = Array.isArray(item?.reactions?.up)
+          ? [...new Set(item.reactions.up.filter(v => typeof v === 'string' && v))]
+          : []
+        const down = Array.isArray(item?.reactions?.down)
+          ? [...new Set(item.reactions.down.filter(v => typeof v === 'string' && v))]
+          : []
+        if (typeof item?.id !== 'string' || typeof item?.url !== 'string') return null
+        return {
+          id: item.id,
+          url: item.url,
+          addedById: typeof item.addedById === 'string' ? item.addedById : '',
+          addedBy: typeof item.addedBy === 'string' ? item.addedBy : 'Anonyme',
+          reactions: { up, down }
+        }
+      })
+      .filter(Boolean)
+  }
+
+  function broadcastMusicWishlist(to = null) {
+    if (role.value !== 'host') return
+    const data = {
+      kind: 'music-wishlist-sync',
+      items: musicWishlist.value
+    }
+    if (to) {
+      signaling.send({ type: 'signal', to, data })
+      return
+    }
+    for (const p of peers.value) {
+      if (p.id === peerId.value) continue
+      signaling.send({ type: 'signal', to: p.id, data })
+    }
+  }
+
+  function addMusicWishlistItem({ url, addedById, addedBy }) {
+    const normalized = normalizeYoutubeLink(url)
+    if (!normalized.ok) return normalized
+    if (musicWishlist.value.some(item => item.url === normalized.url)) {
+      return { ok: false, reason: 'duplicate' }
+    }
+    const next = {
+      id: `wish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      url: normalized.url,
+      addedById,
+      addedBy,
+      reactions: { up: [], down: [] }
+    }
+    musicWishlist.value = [next, ...musicWishlist.value]
+    broadcastMusicWishlist()
+    return { ok: true, item: next }
+  }
+
+  function applyMusicWishlistReaction({ itemId, reaction, voterId }) {
+    if (!['up', 'down'].includes(reaction)) return { ok: false, reason: 'invalid-reaction' }
+    const idx = musicWishlist.value.findIndex(item => item.id === itemId)
+    if (idx < 0) return { ok: false, reason: 'not-found' }
+    const item = musicWishlist.value[idx]
+    const opposite = reaction === 'up' ? 'down' : 'up'
+    const alreadyInReaction = item.reactions[reaction].includes(voterId)
+    const next = {
+      ...item,
+      reactions: {
+        up: [...item.reactions.up],
+        down: [...item.reactions.down]
+      }
+    }
+    next.reactions[opposite] = next.reactions[opposite].filter(id => id !== voterId)
+    if (alreadyInReaction) {
+      next.reactions[reaction] = next.reactions[reaction].filter(id => id !== voterId)
+    } else {
+      next.reactions[reaction] = [...next.reactions[reaction], voterId]
+    }
+    musicWishlist.value = [
+      ...musicWishlist.value.slice(0, idx),
+      next,
+      ...musicWishlist.value.slice(idx + 1)
+    ]
+    broadcastMusicWishlist()
+    return { ok: true }
   }
 
   function teardownPeer(remotePeerId) {
@@ -228,6 +352,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
           to: msg.peer.id,
           data: { kind: 'host-shared-link', url: hostSharedLink.value }
         })
+      }
+      if (role.value === 'host' && musicWishlist.value.length) {
+        broadcastMusicWishlist(msg.peer.id)
       }
       // Je ne fais rien — le nouveau viendra m'offrir.
     },
@@ -333,6 +460,60 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     return { ok: true, url: next }
   }
 
+  function addMusicWishlistLink(raw) {
+    if (musicWishlist.value.length >= 200) {
+      return { ok: false, reason: 'limit-reached' }
+    }
+    const normalized = normalizeYoutubeLink(raw)
+    if (!normalized.ok) return normalized
+    if (musicWishlist.value.some(item => item.url === normalized.url)) {
+      return { ok: false, reason: 'duplicate' }
+    }
+    if (role.value === 'host') {
+      return addMusicWishlistItem({
+        url: normalized.url,
+        addedById: peerId.value,
+        addedBy: me.value?.pseudo || 'Anonyme'
+      })
+    }
+    if (!hostId.value) return { ok: false, reason: 'no-host' }
+    signaling.send({
+      type: 'signal',
+      to: hostId.value,
+      data: {
+        kind: 'music-wishlist-add-request',
+        url: normalized.url
+      }
+    })
+    return { ok: true, pending: true, url: normalized.url }
+  }
+
+  function reactToMusicWishlist(itemId, reaction) {
+    if (!itemId) return { ok: false, reason: 'not-found' }
+    if (!['up', 'down'].includes(reaction)) return { ok: false, reason: 'invalid-reaction' }
+    if (!musicWishlist.value.some(item => item.id === itemId)) {
+      return { ok: false, reason: 'not-found' }
+    }
+    if (role.value === 'host') {
+      return applyMusicWishlistReaction({
+        itemId,
+        reaction,
+        voterId: peerId.value
+      })
+    }
+    if (!hostId.value) return { ok: false, reason: 'no-host' }
+    signaling.send({
+      type: 'signal',
+      to: hostId.value,
+      data: {
+        kind: 'music-wishlist-react-request',
+        itemId,
+        reaction
+      }
+    })
+    return { ok: true, pending: true }
+  }
+
   // --- Lifecycle ----------------------------------------------------
   function joinIfReady() {
     if (signaling.status.value !== 'open') return false
@@ -372,9 +553,11 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     peers, hostId, status, lastError,
     me, host, role, listenerCount,
     hostSharedLink,
+    musicWishlist,
     localStream,
     // Actions
     attachStream, detachStream,
-    requestFloor, changeHost, setHostSharedLink
+    requestFloor, changeHost, setHostSharedLink,
+    addMusicWishlistLink, reactToMusicWishlist
   }
 }
