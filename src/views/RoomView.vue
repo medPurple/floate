@@ -196,7 +196,7 @@ function saveHostSharedLink() {
     return
   }
   if (result.reason === 'invalid-url') {
-    push({ kind: 'error', message: 'Lien invalide. Utilise un URL http(s).' })
+    push({ kind: 'error', message: 'Lien invalide. Utilise une URL http(s).' })
   }
 }
 
