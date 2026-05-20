@@ -43,6 +43,10 @@ Pour ne lancer que l'un ou l'autre : `npm run dev` (web) ou `npm run dev:server`
 5. Le premier onglet est host. Clique "Démarrer la diffusion" → sélectionne un onglet qui joue de la musique (YouTube, SoundCloud…) et **coche bien « Partager l'audio de l'onglet »**
 6. Sur le second onglet tu dois entendre le son
 
+### Partager le lien du son
+
+Dans la room, le host peut renseigner "Lien du son" (ex: URL YouTube/SoundCloud) puis cliquer "Mettre à jour". Les listeners voient alors ce lien dans la sidebar et peuvent l'ouvrir.
+
 ### Tester la sortie audio (setSinkId)
 
 Sur le panneau "Sortie audio", clique "Détecter mes appareils" (autorise le micro une fois — c'est juste pour révéler les noms des devices, le stream est immédiatement coupé). Tu peux ensuite choisir AirPods, casque BT, sortie système, etc.

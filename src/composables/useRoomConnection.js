@@ -78,6 +78,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   const listenerCount = computed(() =>
     peers.value.filter(p => p.id !== hostId.value).length
   )
+  const hostSharedLink = ref('')
 
   // --- WebRTC interne ----------------------------------------------
   /** Map<peerId, RTCPeerConnection> */
@@ -175,8 +176,24 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
         if (!pc) return
         await pc.addIceCandidate(data.candidate).catch(() => { /* ICE peut échouer benin */ })
       }
+      else if (data.kind === 'host-shared-link') {
+        if (from !== hostId.value) return
+        hostSharedLink.value = typeof data.url === 'string' ? data.url : ''
+      }
     } catch (err) {
       console.error('[room] handleSignal', data.kind, err)
+    }
+  }
+
+  function normalizeSharedLink(raw) {
+    const input = String(raw || '').trim()
+    if (!input) return ''
+    try {
+      const u = new URL(input)
+      if (!['http:', 'https:'].includes(u.protocol)) return null
+      return u.href
+    } catch {
+      return null
     }
   }
 
@@ -205,6 +222,13 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
       if (!peers.value.some(p => p.id === msg.peer.id)) {
         peers.value = [...peers.value, msg.peer]
       }
+      if (role.value === 'host' && hostSharedLink.value) {
+        signaling.send({
+          type: 'signal',
+          to: msg.peer.id,
+          data: { kind: 'host-shared-link', url: hostSharedLink.value }
+        })
+      }
       // Je ne fais rien — le nouveau viendra m'offrir.
     },
 
@@ -215,6 +239,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
 
     'host-changed'(msg) {
       hostId.value = msg.hostId
+      hostSharedLink.value = ''
     },
 
     signal(msg) {
@@ -291,6 +316,22 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     signaling.send({ type: 'host-change', newHostId })
   }
 
+  function setHostSharedLink(raw) {
+    if (role.value !== 'host') return { ok: false, reason: 'not-host' }
+    const next = normalizeSharedLink(raw)
+    if (next === null) return { ok: false, reason: 'invalid-url' }
+    hostSharedLink.value = next
+    for (const p of peers.value) {
+      if (p.id === peerId.value) continue
+      signaling.send({
+        type: 'signal',
+        to: p.id,
+        data: { kind: 'host-shared-link', url: next }
+      })
+    }
+    return { ok: true, url: next }
+  }
+
   // --- Lifecycle ----------------------------------------------------
   function joinIfReady() {
     if (signaling.status.value !== 'open') return false
@@ -329,9 +370,10 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     // State
     peers, hostId, status, lastError,
     me, host, role, listenerCount,
+    hostSharedLink,
     localStream,
     // Actions
     attachStream, detachStream,
-    requestFloor, changeHost
+    requestFloor, changeHost, setHostSharedLink
   }
 }
