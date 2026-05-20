@@ -29,6 +29,7 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useSession } from './useSession.js'
 import { useSignaling } from './useSignaling.js'
 import { ICE_SERVERS } from '../lib/config.js'
+import { DEFAULT_PALETTE_ID } from '../lib/palettes.js'
 
 // Booster Opus pour la musique : 256kbps maxBitrate, stereo on via SDP.
 const OPUS_MAX_BITRATE = 256_000
@@ -71,6 +72,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   const hostId = ref(null)
   const status = ref('connecting')   // connecting | connected | error | closed
   const lastError = ref(null)
+  const palette = ref(DEFAULT_PALETTE_ID)
 
   const me = computed(() => peers.value.find(p => p.id === peerId.value) || null)
   const host = computed(() => peers.value.find(p => p.id === hostId.value) || null)
@@ -189,9 +191,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     const input = String(raw || '').trim()
     if (!input) return { ok: true, url: '' }
     try {
-      const u = new URL(input)
-      if (!['http:', 'https:'].includes(u.protocol)) return { ok: false, reason: 'invalid-url' }
-      return { ok: true, url: u.href }
+      const parsedUrl = new URL(input)
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) return { ok: false, reason: 'invalid-url' }
+      return { ok: true, url: parsedUrl.href }
     } catch {
       return { ok: false, reason: 'invalid-url' }
     }
@@ -211,6 +213,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     welcome(msg) {
       peers.value = msg.peers || []
       hostId.value = msg.hostId || null
+      palette.value = msg.palette || DEFAULT_PALETTE_ID
       status.value = 'connected'
       // J'initie une RTCPeerConnection vers chaque peer déjà présent.
       for (const p of peers.value) {
@@ -240,6 +243,10 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     'host-changed'(msg) {
       hostId.value = msg.hostId
       hostSharedLink.value = ''
+    },
+
+    'palette-changed'(msg) {
+      palette.value = msg.palette || DEFAULT_PALETTE_ID
     },
 
     signal(msg) {
@@ -316,6 +323,10 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     signaling.send({ type: 'host-change', newHostId })
   }
 
+  function changePalette(id) {
+    signaling.send({ type: 'palette-change', palette: id })
+  }
+
   function setHostSharedLink(raw) {
     if (role.value !== 'host') return { ok: false, reason: 'not-host' }
     const normalized = normalizeSharedLink(raw)
@@ -370,11 +381,12 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   return {
     // State
     peers, hostId, status, lastError,
+    palette,
     me, host, role, listenerCount,
     hostSharedLink,
     localStream,
     // Actions
     attachStream, detachStream,
-    requestFloor, changeHost, setHostSharedLink
+    requestFloor, changeHost, changePalette, setHostSharedLink
   }
 }

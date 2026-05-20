@@ -17,20 +17,23 @@
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
-import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
-import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
-import FlAudioOutputPanel from '../components/molecules/FlAudioOutputPanel.vue'
-import FlVolumePanel from '../components/molecules/FlVolumePanel.vue'
-import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
-import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
-import FlStage from '../components/molecules/FlStage.vue'
 import FlButton from '../components/atoms/FlButton.vue'
 import FlInput from '../components/atoms/FlInput.vue'
+import FlAudioOutputPanel from '../components/molecules/FlAudioOutputPanel.vue'
+import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
+import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
+import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
+import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
+import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
+import FlStage from '../components/molecules/FlStage.vue'
+import FlVolumePanel from '../components/molecules/FlVolumePanel.vue'
 
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
+import { usePalette } from '../composables/usePalette.js'
 import { useRoomConnection } from '../composables/useRoomConnection.js'
 import { useDisplayCapture } from '../composables/useDisplayCapture.js'
+import { PALETTES } from '../lib/palettes.js'
 
 const props = defineProps({
   code: { type: String, required: true }
@@ -83,6 +86,8 @@ const roomConn = useRoomConnection({
   onFloorRequest: handleFloorRequest,
   onRemoteStream: handleRemoteStream
 })
+
+usePalette(roomConn.palette)
 
 // Si le host change, on met à jour le stream actif.
 watch(roomConn.hostId, (newHostId) => {
@@ -215,6 +220,10 @@ function denyRequest(id) {
   floorRequests.value = floorRequests.value.filter(r => r.id !== id)
 }
 
+function onPaletteChange(id) {
+  roomConn.changePalette(id)
+}
+
 // --- Audio playback côté listener + setSinkId --------------------------
 const audioEl = ref(null)
 
@@ -339,13 +348,15 @@ const isDev = import.meta.env?.DEV ?? false
       />
 
       <aside class="room-sidebar" aria-label="Panneaux de la room">
-        <!-- Ordre §4.5 :
+        <!-- Ordre §4.5 (+ palette host) :
              1. Code (si privée)
              2. Sortie audio
              3. Lien du son
-             4. Demandes de main (host + pending > 0)
-             5. Participants
-         -->
+             4. Volume
+             5. Palette (host)
+             6. Demandes de main (host + pending > 0)
+             7. Participants
+        -->
         <FlInvitePanel v-if="visibility === 'private'" :code="code" />
 
         <FlAudioOutputPanel @change="onAudioOutputChange" />
@@ -375,7 +386,7 @@ const isDev = import.meta.env?.DEV ?? false
               rel="noopener noreferrer"
               aria-label="Ouvrir le lien du son (nouvel onglet)"
             >
-              {{ roomConn.hostSharedLink.value }}
+              {{ roomConn.hostSharedLink.value }} <span class="fl-shared-link-note">(nouvel onglet)</span>
             </a>
             <p v-else class="fl-shared-link-empty">
               Le host n'a pas encore partagé de lien.
@@ -387,6 +398,13 @@ const isDev = import.meta.env?.DEV ?? false
           :disabled="roomConn.role.value === 'host'"
           :disabled-hint="roomConn.role.value === 'host' ? 'Sans effet pendant que tu diffuses.' : ''"
           @change="onVolumeChange"
+        />
+
+        <FlPalettePanel
+          v-if="roomConn.role.value === 'host'"
+          :palettes="PALETTES"
+          :selected-id="roomConn.palette.value"
+          @change="onPaletteChange"
         />
 
         <FlFloorRequestsPanel
@@ -454,6 +472,11 @@ const isDev = import.meta.env?.DEV ?? false
 }
 
 .fl-shared-link-empty {
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.fl-shared-link-note {
   font-size: var(--fs-mini);
   color: var(--text-faint);
 }

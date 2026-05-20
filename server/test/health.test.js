@@ -38,8 +38,20 @@ async function get(path, headers = {}) {
 async function openWs(path = '/signaling') {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(`ws://localhost:${process.env.PORT}${path}`)
-    ws.once('open', () => resolve(ws))
-    ws.once('error', reject)
+    const onOpen = () => {
+      cleanup()
+      resolve(ws)
+    }
+    const onError = (err) => {
+      cleanup()
+      reject(err)
+    }
+    const cleanup = () => {
+      ws.off('open', onOpen)
+      ws.off('error', onError)
+    }
+    ws.on('open', onOpen)
+    ws.on('error', onError)
   })
 }
 
@@ -87,6 +99,13 @@ async function expectNoMessageType(ws, type, timeoutMs = 300, predicate = null) 
     const timer = setTimeout(onTimeout, timeoutMs)
     ws.on('message', onMessage)
   })
+}
+
+async function joinRoom(room, peerId, pseudo) {
+  const ws = await openWs()
+  ws.send(JSON.stringify({ type: 'join', room, peerId, pseudo }))
+  const welcome = await waitForMessageType(ws, 'welcome')
+  return { ws, welcome }
 }
 
 test('GET /health → 200 avec payload attendu', async () => {
@@ -154,6 +173,72 @@ test('OPTIONS preflight répond 204', async () => {
     headers: { Origin: 'https://example.test' }
   })
   assert.equal(res.status, 204)
+})
+
+test('welcome expose la palette courante et un changement host est diffusé aux peers', async () => {
+  const room = `PAL${Date.now()}A`
+  const { ws: host, welcome: hostWelcome } = await joinRoom(room, 'host-a', 'Host')
+
+  try {
+    assert.equal(hostWelcome.type, 'welcome')
+    assert.equal(hostWelcome.palette, 'ambiance-abricot')
+
+    const joined = waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === 'listener-a')
+    const { ws: listener, welcome: listenerWelcome } = await joinRoom(room, 'listener-a', 'Listener')
+
+    try {
+      assert.equal(listenerWelcome.palette, 'ambiance-abricot')
+      assert.equal((await joined).type, 'peer-joined')
+
+      host.send(JSON.stringify({ type: 'palette-change', palette: 'lavande' }))
+
+      const [hostPalette, listenerPalette] = await Promise.all([
+        waitForMessageType(host, 'palette-changed'),
+        waitForMessageType(listener, 'palette-changed')
+      ])
+
+      assert.deepEqual(hostPalette, { type: 'palette-changed', palette: 'lavande' })
+      assert.deepEqual(listenerPalette, { type: 'palette-changed', palette: 'lavande' })
+    } finally {
+      listener.close()
+    }
+  } finally {
+    host.close()
+  }
+})
+
+test('palette-change ignore les listeners et persiste pour les nouveaux arrivants', async () => {
+  const room = `PAL${Date.now()}B`
+  const { ws: host } = await joinRoom(room, 'host-b', 'Host')
+
+  try {
+    const joined = waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === 'listener-b')
+    const { ws: listener } = await joinRoom(room, 'listener-b', 'Listener')
+
+    try {
+      assert.equal((await joined).type, 'peer-joined')
+
+      listener.send(JSON.stringify({ type: 'palette-change', palette: 'lagon' }))
+      await expectNoMessageType(host, 'palette-changed', 300, (msg) => msg.palette === 'lagon')
+
+      host.send(JSON.stringify({ type: 'palette-change', palette: 'foret' }))
+      await Promise.all([
+        waitForMessageType(host, 'palette-changed', 1000, (msg) => msg.palette === 'foret'),
+        waitForMessageType(listener, 'palette-changed', 1000, (msg) => msg.palette === 'foret')
+      ])
+
+      const { ws: newcomer, welcome } = await joinRoom(room, 'listener-c', 'Late listener')
+      try {
+        assert.equal(welcome.palette, 'foret')
+      } finally {
+        newcomer.close()
+      }
+    } finally {
+      listener.close()
+    }
+  } finally {
+    host.close()
+  }
 })
 
 test('Refresh listener: la fermeture de l’ancienne socket ne supprime pas la nouvelle session', async () => {
