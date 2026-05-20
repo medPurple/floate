@@ -187,13 +187,13 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
 
   function normalizeSharedLink(raw) {
     const input = String(raw || '').trim()
-    if (!input) return ''
+    if (!input) return { ok: true, url: '' }
     try {
       const u = new URL(input)
-      if (!['http:', 'https:'].includes(u.protocol)) return null
-      return u.href
+      if (!['http:', 'https:'].includes(u.protocol)) return { ok: false, reason: 'invalid-url' }
+      return { ok: true, url: u.href }
     } catch {
-      return null
+      return { ok: false, reason: 'invalid-url' }
     }
   }
 
@@ -318,8 +318,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
 
   function setHostSharedLink(raw) {
     if (role.value !== 'host') return { ok: false, reason: 'not-host' }
-    const next = normalizeSharedLink(raw)
-    if (next === null) return { ok: false, reason: 'invalid-url' }
+    const normalized = normalizeSharedLink(raw)
+    if (!normalized.ok) return { ok: false, reason: 'invalid-url' }
+    const next = normalized.url
     hostSharedLink.value = next
     for (const p of peers.value) {
       if (p.id === peerId.value) continue

@@ -355,6 +355,7 @@ const isDev = import.meta.env?.DEV ?? false
           <template v-if="roomConn.role.value === 'host'">
             <FlInput
               v-model="hostSharedLinkDraft"
+              label="URL du son"
               type="url"
               placeholder="https://..."
               hint="Optionnel : partage le lien de l'onglet diffusé."
@@ -372,6 +373,7 @@ const isDev = import.meta.env?.DEV ?? false
               :href="roomConn.hostSharedLink.value"
               target="_blank"
               rel="noopener noreferrer"
+              aria-label="Ouvrir le lien du son (nouvel onglet)"
             >
               {{ roomConn.hostSharedLink.value }}
             </a>
