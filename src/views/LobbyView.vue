@@ -13,6 +13,7 @@ import { useRouter } from 'vue-router'
 
 import FlButton from '../components/atoms/FlButton.vue'
 import FlInput from '../components/atoms/FlInput.vue'
+import FlThemeToggle from '../components/atoms/FlThemeToggle.vue'
 import FlToggle from '../components/atoms/FlToggle.vue'
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
@@ -168,6 +169,7 @@ watch(helpOpen, (open) => {
         >
           Comment ça marche ?
         </button>
+        <FlThemeToggle />
         <span class="version">v0.1</span>
       </div>
     </header>

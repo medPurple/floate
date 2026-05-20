@@ -5,6 +5,7 @@
 -->
 <script setup>
 import FlButton from '../atoms/FlButton.vue'
+import FlThemeToggle from '../atoms/FlThemeToggle.vue'
 
 defineProps({
   roomName: { type: String, required: true },
@@ -28,9 +29,12 @@ defineEmits(['leave'])
       </span>
     </div>
 
-    <FlButton variant="ghost" @click="$emit('leave')">
-      Quitter
-    </FlButton>
+    <div class="fl-room-header-right">
+      <FlThemeToggle />
+      <FlButton variant="ghost" @click="$emit('leave')">
+        Quitter
+      </FlButton>
+    </div>
   </header>
 </template>
 
@@ -56,6 +60,12 @@ defineEmits(['leave'])
   gap: var(--space-lg);
   min-width: 0;
   flex: 1;
+}
+
+.fl-room-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
 .brand {

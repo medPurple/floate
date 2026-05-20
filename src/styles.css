@@ -88,6 +88,68 @@
   --stage-visualizer-w: 420px;
   --stage-visualizer-h: 80px;
   --breakpoint-room: 900px;
+
+  /* 1.8 Background du <body> — exposé en variable pour pouvoir
+     basculer en mode clair sans répéter tout le rendu. */
+  --page-bg:
+    radial-gradient(1200px 800px at 80% -10%, #2a1f2e 0%, transparent 60%),
+    radial-gradient(900px 700px at -10% 110%, #1a2330 0%, transparent 55%),
+    var(--bg);
+}
+
+/* -------------------------------------------------------------
+   1bis. Mode clair non blanc
+   -------------------------------------------------------------
+   Cohérent avec la chaleur du DS : on ne bascule pas sur du
+   blanc froid, mais sur une palette sépia/crème qui prolonge
+   l'ambiance "salon" plutôt que de la trahir.
+
+   Activé par :
+     - data-theme="light" sur <html> (override utilisateur)
+     - data-theme="auto" + @media (prefers-color-scheme: light)
+
+   Les accents (--accent / --accent-soft / --accent-strong),
+   ainsi que --live et --good restent inchangés — la sémantique
+   ne doit pas dépendre du thème.
+   ------------------------------------------------------------- */
+:root[data-theme="light"] {
+  --bg: #F5EDE3;          /* Crème chaude */
+  --bg-elev: #FAF3EA;     /* Card / panel */
+  --bg-elev-2: #EFE5D7;   /* Toggle actif, accent subtil */
+  --border: #DDD0BC;
+
+  --text: #2A1F12;        /* Sombre chaud, jamais noir pur */
+  --text-dim: #6B5B43;
+  --text-faint: #A99479;
+  --text-on-accent: #1A0F0A;
+
+  --shadow: 0 10px 40px rgba(73, 51, 22, 0.12);
+
+  --page-bg:
+    radial-gradient(1200px 800px at 80% -10%, #F8D4B5 0%, transparent 65%),
+    radial-gradient(900px 700px at -10% 110%, #E8DEC0 0%, transparent 60%),
+    var(--bg);
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --bg: #F5EDE3;
+    --bg-elev: #FAF3EA;
+    --bg-elev-2: #EFE5D7;
+    --border: #DDD0BC;
+
+    --text: #2A1F12;
+    --text-dim: #6B5B43;
+    --text-faint: #A99479;
+    --text-on-accent: #1A0F0A;
+
+    --shadow: 0 10px 40px rgba(73, 51, 22, 0.12);
+
+    --page-bg:
+      radial-gradient(1200px 800px at 80% -10%, #F8D4B5 0%, transparent 65%),
+      radial-gradient(900px 700px at -10% 110%, #E8DEC0 0%, transparent 60%),
+      var(--bg);
+  }
 }
 
 /* -------------------------------------------------------------
@@ -107,14 +169,24 @@ body {
   font-size: var(--fs-body);
   line-height: 1.5;
   color: var(--text);
-  background:
-    radial-gradient(1200px 800px at 80% -10%, #2a1f2e 0%, transparent 60%),
-    radial-gradient(900px 700px at -10% 110%, #1a2330 0%, transparent 55%),
-    var(--bg);
+  background: var(--page-bg);
   background-attachment: fixed;
   min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color var(--duration-default) var(--easing-default),
+              color var(--duration-default) var(--easing-default);
+}
+
+/* L'en-tête glass de la Room devient blanchâtre en mode clair —
+   on remet une teinte cohérente. */
+:root[data-theme="light"] .fl-room-header {
+  background: rgba(245, 237, 227, 0.7) !important;
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] .fl-room-header {
+    background: rgba(245, 237, 227, 0.7) !important;
+  }
 }
 
 button, input, select, textarea {
