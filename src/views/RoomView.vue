@@ -25,6 +25,8 @@ import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
 import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
 import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
 import FlStage from '../components/molecules/FlStage.vue'
+import FlButton from '../components/atoms/FlButton.vue'
+import FlInput from '../components/atoms/FlInput.vue'
 
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
@@ -183,6 +185,26 @@ function leave() {
   router.push({ name: 'lobby' })
 }
 
+const hostSharedLinkDraft = ref('')
+
+watch(() => roomConn.hostSharedLink.value, (url) => {
+  hostSharedLinkDraft.value = url || ''
+}, { immediate: true })
+
+function saveHostSharedLink() {
+  const result = roomConn.setHostSharedLink(hostSharedLinkDraft.value)
+  if (result.ok) {
+    push({
+      kind: 'success',
+      message: result.url ? 'Lien du son partagé.' : 'Lien du son retiré.'
+    })
+    return
+  }
+  if (result.reason === 'invalid-url') {
+    push({ kind: 'error', message: 'Lien invalide. Utilise une URL http(s).' })
+  }
+}
+
 // --- Demandes de main : décisions du host ------------------------------
 function acceptRequest(id) {
   const req = floorRequests.value.find(r => r.id === id)
@@ -329,14 +351,48 @@ const isDev = import.meta.env?.DEV ?? false
         <!-- Ordre §4.5 (+ palette host) :
              1. Code (si privée)
              2. Sortie audio
-             3. Volume
-             4. Palette (host)
-             5. Demandes de main (host + pending > 0)
-             6. Participants
+             3. Lien du son
+             4. Volume
+             5. Palette (host)
+             6. Demandes de main (host + pending > 0)
+             7. Participants
         -->
         <FlInvitePanel v-if="visibility === 'private'" :code="code" />
 
         <FlAudioOutputPanel @change="onAudioOutputChange" />
+
+        <section class="panel fl-shared-link">
+          <h3 class="panel-title">Lien du son</h3>
+          <template v-if="roomConn.role.value === 'host'">
+            <FlInput
+              v-model="hostSharedLinkDraft"
+              label="URL du son"
+              type="url"
+              placeholder="https://..."
+              hint="Optionnel : partage le lien de l'onglet diffusé."
+            />
+            <div class="fl-shared-link-actions">
+              <FlButton variant="secondary" @click="saveHostSharedLink">
+                Mettre à jour
+              </FlButton>
+            </div>
+          </template>
+          <template v-else>
+            <a
+              v-if="roomConn.hostSharedLink.value"
+              class="fl-shared-link-anchor"
+              :href="roomConn.hostSharedLink.value"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Ouvrir le lien du son (nouvel onglet)"
+            >
+              {{ roomConn.hostSharedLink.value }}
+            </a>
+            <p v-else class="fl-shared-link-empty">
+              Le host n'a pas encore partagé de lien.
+            </p>
+          </template>
+        </section>
 
         <FlVolumePanel
           :disabled="roomConn.role.value === 'host'"
@@ -397,6 +453,27 @@ const isDev = import.meta.env?.DEV ?? false
   flex-direction: column;
   gap: var(--space-lg);
   min-width: 0;
+}
+
+.fl-shared-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.fl-shared-link-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fl-shared-link-anchor {
+  color: var(--accent);
+  word-break: break-all;
+}
+
+.fl-shared-link-empty {
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
 }
 
 /* §4.3 — sous 900px : une seule colonne, sidebar sous le stage */
