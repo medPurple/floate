@@ -181,13 +181,13 @@ test('welcome expose la palette courante et un changement host est diffusé aux 
 
   try {
     assert.equal(hostWelcome.type, 'welcome')
-    assert.equal(hostWelcome.palette, 'ambiance-abricot')
+    assert.equal(hostWelcome.palette, 'abricot')
 
     const joined = waitForMessageType(host, 'peer-joined', 1000, (msg) => msg.peer?.id === 'listener-a')
     const { ws: listener, welcome: listenerWelcome } = await joinRoom(room, 'listener-a', 'Listener')
 
     try {
-      assert.equal(listenerWelcome.palette, 'ambiance-abricot')
+      assert.equal(listenerWelcome.palette, 'abricot')
       assert.equal((await joined).type, 'peer-joined')
 
       host.send(JSON.stringify({ type: 'palette-change', palette: 'lavande' }))

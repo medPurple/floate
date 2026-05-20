@@ -2,8 +2,8 @@ const BASE_TEXT_ON_ACCENT = '#1A0F0A'
 
 const RAW_PALETTES = [
   {
-    id: 'ambiance-abricot',
-    label: 'Ambiance Abricot',
+    id: 'abricot',
+    label: 'Abricot',
     accent: '#F4A261',
     accentStrong: '#E76F51',
     textOnAccent: BASE_TEXT_ON_ACCENT
