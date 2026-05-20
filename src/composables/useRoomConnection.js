@@ -191,9 +191,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     const input = String(raw || '').trim()
     if (!input) return { ok: true, url: '' }
     try {
-      const u = new URL(input)
-      if (!['http:', 'https:'].includes(u.protocol)) return { ok: false, reason: 'invalid-url' }
-      return { ok: true, url: u.href }
+      const parsedUrl = new URL(input)
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) return { ok: false, reason: 'invalid-url' }
+      return { ok: true, url: parsedUrl.href }
     } catch {
       return { ok: false, reason: 'invalid-url' }
     }
