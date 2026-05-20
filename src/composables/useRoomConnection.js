@@ -32,6 +32,7 @@ import { ICE_SERVERS } from '../lib/config.js'
 
 // Booster Opus pour la musique : 256kbps maxBitrate, stereo on via SDP.
 const OPUS_MAX_BITRATE = 256_000
+const MAX_WISHLIST_ITEMS = 200
 
 function enableStereoOpus(sdp) {
   // Activer fmtp stereo=1; sprop-stereo=1; maxaveragebitrate sur Opus.
@@ -88,6 +89,13 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   const remoteStreams = new Map()
   /** Le stream local (host uniquement, null sinon) */
   const localStream = ref(null)
+
+  function createWishlistItemId() {
+    if (typeof crypto?.randomUUID === 'function') {
+      return `wish-${crypto.randomUUID()}`
+    }
+    return `wish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+  }
 
   function makePC(remotePeerId) {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
@@ -281,7 +289,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
       return { ok: false, reason: 'duplicate' }
     }
     const next = {
-      id: `wish-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      id: createWishlistItemId(),
       url: normalized.url,
       addedById,
       addedBy,
@@ -461,7 +469,7 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   }
 
   function addMusicWishlistLink(raw) {
-    if (musicWishlist.value.length >= 200) {
+    if (musicWishlist.value.length >= MAX_WISHLIST_ITEMS) {
       return { ok: false, reason: 'limit-reached' }
     }
     const normalized = normalizeYoutubeLink(raw)
