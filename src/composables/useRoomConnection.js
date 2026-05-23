@@ -421,7 +421,7 @@ export function useRoomConnection({
       room: code,
       peerId: peerId.value,
       pseudo,
-      roomName,    // posés uniquement si on est le premier (sinon le serveur ignore)
+      roomName: roomName.value,
       visibility
     })
   }
