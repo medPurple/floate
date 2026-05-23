@@ -14,17 +14,19 @@
   (état host-ready). Aucun autre primary dans cette vue.
 -->
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
 import FlButton from '../components/atoms/FlButton.vue'
 import FlInput from '../components/atoms/FlInput.vue'
 import FlAudioOutputPanel from '../components/molecules/FlAudioOutputPanel.vue'
+import FlChatPanel from '../components/molecules/FlChatPanel.vue'
 import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
 import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
 import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
 import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
 import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
+import FlRoomNameDialog from '../components/molecules/FlRoomNameDialog.vue'
 import FlStage from '../components/molecules/FlStage.vue'
 import FlVolumePanel from '../components/molecules/FlVolumePanel.vue'
 
@@ -33,6 +35,7 @@ import { useSession } from '../composables/useSession.js'
 import { usePalette } from '../composables/usePalette.js'
 import { useRoomConnection } from '../composables/useRoomConnection.js'
 import { useDisplayCapture } from '../composables/useDisplayCapture.js'
+import { useChat } from '../composables/useChat.js'
 import { PALETTES } from '../lib/palettes.js'
 
 const props = defineProps({
@@ -51,10 +54,11 @@ if (!storedPseudo.value) {
 
 // --- Métadonnées de la room ---------------------------------------------
 // Transmises par le Lobby en query params (?name=...&v=public|private).
+// L'autorité du nom = serveur (welcome + room-name-changed). On garde
+// le query name comme seed pour la création.
 const queryName = typeof route.query.name === 'string' ? route.query.name : ''
 const queryVis  = route.query.v === 'public' ? 'public' : 'private'
 
-const roomName   = ref(queryName || `Room ${props.code}`)
 const visibility = ref(queryVis)
 
 // --- Connexion à la room -----------------------------------------------
@@ -78,16 +82,70 @@ function handleRemoteStream(remotePeerId, stream) {
   }
 }
 
+// Bridge tardif vers le composable chat (créé après roomConn).
+const chatBridge = {
+  ingestChat: () => {},
+  ingestProposal: () => {},
+  ingestVote: () => {}
+}
+
 const roomConn = useRoomConnection({
   code: props.code,
   pseudo: storedPseudo.value,
   roomName: queryName || null,
   visibility: queryVis,
   onFloorRequest: handleFloorRequest,
-  onRemoteStream: handleRemoteStream
+  onRemoteStream: handleRemoteStream,
+  onChatMessage: (msg) => chatBridge.ingestChat(msg),
+  onProposalCreated: (msg) => chatBridge.ingestProposal(msg),
+  onProposalVote: (msg) => chatBridge.ingestVote(msg),
+  onRoomNameChanged: (name) => push({ kind: 'info', message: `Room renommée : ${name}` })
 })
 
+// Nom de la room — source de vérité = roomConn.roomName (qui vient
+// du welcome + room-name-changed). Fallback : « Room {code} ».
+const roomName = computed(() => roomConn.roomName.value || `Room ${props.code}`)
+
 usePalette(roomConn.palette)
+
+// --- Chat + propositions (commande /proposer) --------------------------
+const chat = useChat({
+  peerId,
+  pseudo: storedPseudo.value,
+  sendChat: (m) => roomConn.sendChatMessage(m),
+  sendProposal: (p) => roomConn.sendProposal(p),
+  sendVote: (v) => roomConn.sendProposalVote(v)
+})
+chatBridge.ingestChat = chat.ingestChat
+chatBridge.ingestProposal = chat.ingestProposal
+chatBridge.ingestVote = chat.ingestVote
+
+async function onChatSubmit(text) {
+  const result = await chat.submit(text)
+  if (result && result.ok === false && result.message) {
+    push({ kind: 'error', message: result.message })
+  }
+}
+
+function onChatVote(proposalId, value) {
+  chat.castVote(proposalId, value)
+}
+
+// --- Renommage de la room (host uniquement) ----------------------------
+const isEditingName = ref(false)
+
+function openRenameDialog() {
+  if (roomConn.role.value !== 'host') return
+  isEditingName.value = true
+}
+
+function saveRoomName(next) {
+  const result = roomConn.setRoomName(next)
+  isEditingName.value = false
+  if (!result.ok && result.reason !== 'empty') {
+    push({ kind: 'error', message: 'Impossible de renommer la room.' })
+  }
+}
 
 // Si le host change, on met à jour le stream actif.
 watch(roomConn.hostId, (newHostId) => {
@@ -327,7 +385,9 @@ const isDev = import.meta.env?.DEV ?? false
     <FlRoomHeader
       :room-name="roomName"
       :visibility="visibility"
+      :can-edit="roomConn.role.value === 'host'"
       @leave="leave"
+      @edit-name="openRenameDialog"
     />
 
     <div class="room-body">
@@ -422,8 +482,25 @@ const isDev = import.meta.env?.DEV ?? false
       </aside>
     </div>
 
+    <!-- Bande chat pleine largeur, sous la stage + sidebar -->
+    <section class="room-chat-band" aria-label="Chat de la room">
+      <FlChatPanel
+        :messages="chat.messages.value"
+        :me-id="peerId"
+        @submit="onChatSubmit"
+        @vote="onChatVote"
+      />
+    </section>
+
     <!-- Élément audio caché — joue le stream du host pour les listeners -->
     <audio ref="audioEl" autoplay playsinline />
+
+    <FlRoomNameDialog
+      v-if="isEditingName"
+      :initial-name="roomName"
+      @save="saveRoomName"
+      @cancel="isEditingName = false"
+    />
   </div>
 </template>
 
@@ -481,12 +558,24 @@ const isDev = import.meta.env?.DEV ?? false
   color: var(--text-faint);
 }
 
+/* --- Bande chat pleine largeur (sous .room-body) --------------------- */
+.room-chat-band {
+  width: 100%;
+  max-width: var(--max-width-room);
+  margin: 0 auto;
+  padding: 0 var(--space-2xl) var(--space-2xl);
+  box-sizing: border-box;
+}
+
 /* §4.3 — sous 900px : une seule colonne, sidebar sous le stage */
 @media (max-width: 900px) {
   .room-body {
     grid-template-columns: 1fr;
     gap: var(--space-lg);
     padding: var(--space-lg);
+  }
+  .room-chat-band {
+    padding: 0 var(--space-lg) var(--space-lg);
   }
 }
 

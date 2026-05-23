@@ -328,6 +328,79 @@ wssSignaling.on('connection', (ws) => {
         room._streaming.delete(myId)
       }
     }
+
+    // -- Chat texte : relais pur, pas de stockage côté serveur.
+    //    L'historique vit côté front. Les late joiners ne le voient pas.
+    else if (msg.type === 'chat-message') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room || !room.has(myId)) return
+      const text = String(msg.text || '').trim().slice(0, 600)
+      if (!text) return
+      const me = room.get(myId)
+      broadcast(myRoom, {
+        type: 'chat-message',
+        id: String(msg.id || randomUUID()),
+        peerId: myId,
+        pseudo: me.pseudo,
+        text,
+        ts: Date.now()
+      }, myId)
+    }
+
+    // -- Host change le nom de la room. Persisté côté serveur pour
+    //    que les nouveaux arrivants le voient dans le welcome.
+    else if (msg.type === 'room-name-change') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room) return
+      if (hostOf(room) !== myId) return
+      const next = String(msg.name || '').trim().slice(0, 64)
+      if (!next) return
+      if (room._name === next) return
+      room._name = next
+      broadcast(myRoom, { type: 'room-name-changed', name: next })
+    }
+
+    // -- Proposition (commande /proposer). Relais, pas de stockage —
+    //    les votes circulent en P2P (via le serveur) et chacun maintient
+    //    son tally local.
+    else if (msg.type === 'proposal-created') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room || !room.has(myId)) return
+      const url = String(msg.url || '')
+      if (!/^https?:\/\//i.test(url)) return
+      const id = String(msg.id || randomUUID())
+      const title = msg.title ? String(msg.title).slice(0, 120) : null
+      const expiresAt = Number(msg.expiresAt) || (Date.now() + 10 * 60 * 1000)
+      const me = room.get(myId)
+      broadcast(myRoom, {
+        type: 'proposal-created',
+        id, url, title,
+        proposedBy: myId,
+        proposedByPseudo: me.pseudo,
+        ts: Date.now(),
+        expiresAt
+      }, myId)
+    }
+
+    else if (msg.type === 'proposal-vote') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room || !room.has(myId)) return
+      const proposalId = String(msg.proposalId || '')
+      const value = msg.value === 'yes' ? 'yes'
+                  : msg.value === 'no'  ? 'no'
+                  : null
+      if (!proposalId || !value) return
+      broadcast(myRoom, {
+        type: 'proposal-vote',
+        proposalId,
+        peerId: myId,
+        value
+      }, myId)
+    }
   })
 
   ws.on('close', () => {

@@ -13,10 +13,12 @@ defineProps({
     type: String,
     default: 'private',
     validator: v => ['public', 'private'].includes(v)
-  }
+  },
+  /** Affiche le bouton crayon de renommage (host uniquement). */
+  canEdit: { type: Boolean, default: false }
 })
 
-defineEmits(['leave'])
+defineEmits(['leave', 'edit-name'])
 </script>
 
 <template>
@@ -24,6 +26,23 @@ defineEmits(['leave'])
     <div class="fl-room-header-left">
       <router-link to="/" class="brand">floate</router-link>
       <h1 class="room-name">{{ roomName }}</h1>
+      <button
+        v-if="canEdit"
+        type="button"
+        class="rename-btn"
+        aria-label="Renommer la room"
+        title="Renommer la room"
+        @click="$emit('edit-name')"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M4 20h4l10-10-4-4L4 16v4Zm12.7-13.3 2.6-2.6a1 1 0 0 1 1.4 0l2.2 2.2a1 1 0 0 1 0 1.4l-2.6 2.6-3.6-3.6Z"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
       <span :class="['visibility-tag', `is-${visibility}`]">
         {{ visibility === 'private' ? 'Privée' : 'Publique' }}
       </span>
@@ -89,6 +108,23 @@ defineEmits(['leave'])
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.rename-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  color: var(--text-dim);
+  border-radius: var(--radius-sm);
+  transition: color var(--duration-fast) var(--easing-default),
+              background var(--duration-fast) var(--easing-default);
+  flex-shrink: 0;
+}
+.rename-btn:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .visibility-tag {

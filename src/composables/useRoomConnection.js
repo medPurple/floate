@@ -64,7 +64,11 @@ async function boostSenderBitrate(pc) {
   }
 }
 
-export function useRoomConnection({ code, pseudo, roomName = null, visibility = null, onFloorRequest, onRemoteStream }) {
+export function useRoomConnection({
+  code, pseudo, roomName: initialRoomName = null, visibility = null,
+  onFloorRequest, onRemoteStream,
+  onChatMessage, onProposalCreated, onProposalVote, onRoomNameChanged
+}) {
   const { peerId } = useSession()
 
   // --- State exposé -------------------------------------------------
@@ -73,6 +77,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   const status = ref('connecting')   // connecting | connected | error | closed
   const lastError = ref(null)
   const palette = ref(DEFAULT_PALETTE_ID)
+  // Nom de la room — autorité = serveur (welcome + room-name-changed).
+  // Si null, c'est à l'UI de fallback sur « Room {code} ».
+  const roomName = ref(initialRoomName || null)
 
   const me = computed(() => peers.value.find(p => p.id === peerId.value) || null)
   const host = computed(() => peers.value.find(p => p.id === hostId.value) || null)
@@ -214,6 +221,9 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
       peers.value = msg.peers || []
       hostId.value = msg.hostId || null
       palette.value = msg.palette || DEFAULT_PALETTE_ID
+      if (typeof msg.roomName === 'string' && msg.roomName) {
+        roomName.value = msg.roomName
+      }
       status.value = 'connected'
       // J'initie une RTCPeerConnection vers chaque peer déjà présent.
       for (const p of peers.value) {
@@ -247,6 +257,25 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
 
     'palette-changed'(msg) {
       palette.value = msg.palette || DEFAULT_PALETTE_ID
+    },
+
+    'room-name-changed'(msg) {
+      const next = typeof msg.name === 'string' ? msg.name : ''
+      if (!next) return
+      roomName.value = next
+      onRoomNameChanged?.(next)
+    },
+
+    'chat-message'(msg) {
+      onChatMessage?.(msg)
+    },
+
+    'proposal-created'(msg) {
+      onProposalCreated?.(msg)
+    },
+
+    'proposal-vote'(msg) {
+      onProposalVote?.(msg)
     },
 
     signal(msg) {
@@ -327,6 +356,46 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
     signaling.send({ type: 'palette-change', palette: id })
   }
 
+  /**
+   * Host change le nom de la room. Le serveur valide (host only), persiste,
+   * et broadcast 'room-name-changed' à tout le monde — c'est ce qui mettra
+   * à jour notre propre `roomName` ref.
+   */
+  function setRoomName(name) {
+    if (role.value !== 'host') return { ok: false, reason: 'not-host' }
+    const next = String(name || '').trim().slice(0, 64)
+    if (!next) return { ok: false, reason: 'empty' }
+    if (next === roomName.value) return { ok: true, unchanged: true }
+    signaling.send({ type: 'room-name-change', name: next })
+    return { ok: true }
+  }
+
+  function sendChatMessage(payload) {
+    signaling.send({
+      type: 'chat-message',
+      id: payload.id,
+      text: payload.text
+    })
+  }
+
+  function sendProposal(payload) {
+    signaling.send({
+      type: 'proposal-created',
+      id: payload.id,
+      url: payload.url,
+      title: payload.title,
+      expiresAt: payload.expiresAt
+    })
+  }
+
+  function sendProposalVote(payload) {
+    signaling.send({
+      type: 'proposal-vote',
+      proposalId: payload.proposalId,
+      value: payload.value
+    })
+  }
+
   function setHostSharedLink(raw) {
     if (role.value !== 'host') return { ok: false, reason: 'not-host' }
     const normalized = normalizeSharedLink(raw)
@@ -381,12 +450,14 @@ export function useRoomConnection({ code, pseudo, roomName = null, visibility = 
   return {
     // State
     peers, hostId, status, lastError,
-    palette,
+    palette, roomName,
     me, host, role, listenerCount,
     hostSharedLink,
     localStream,
     // Actions
     attachStream, detachStream,
-    requestFloor, changeHost, changePalette, setHostSharedLink
+    requestFloor, changeHost, changePalette, setHostSharedLink,
+    setRoomName,
+    sendChatMessage, sendProposal, sendProposalVote
   }
 }
