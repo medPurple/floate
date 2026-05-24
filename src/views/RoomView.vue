@@ -20,7 +20,9 @@ import { useRouter, useRoute } from 'vue-router'
 import FlButton from '../components/atoms/FlButton.vue'
 import FlInput from '../components/atoms/FlInput.vue'
 import FlAudioOutputPanel from '../components/molecules/FlAudioOutputPanel.vue'
-import FlChatPanel from '../components/molecules/FlChatPanel.vue'
+import FlChatBar from '../components/molecules/FlChatBar.vue'
+import FlChatHistoryDialog from '../components/molecules/FlChatHistoryDialog.vue'
+import FlDedications from '../components/molecules/FlDedications.vue'
 import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.vue'
 import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
 import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
@@ -108,10 +110,14 @@ const roomName = computed(() => roomConn.roomName.value || `Room ${props.code}`)
 
 usePalette(roomConn.palette)
 
-// --- Chat + propositions (commande /proposer) --------------------------
+// --- Chat / dédicaces (commande /proposer) -----------------------------
+// Le composable maintient deux files : history (modal) + floating (overlay
+// dans le stage). isHost permet de marquer les messages envoyés alors
+// que l'utilisateur a la main, pour les colorer en --accent.
 const chat = useChat({
   peerId,
   pseudo: storedPseudo.value,
+  isHost: () => roomConn.role.value === 'host',
   sendChat: (m) => roomConn.sendChatMessage(m),
   sendProposal: (p) => roomConn.sendProposal(p),
   sendVote: (v) => roomConn.sendProposalVote(v)
@@ -120,10 +126,14 @@ chatBridge.ingestChat = chat.ingestChat
 chatBridge.ingestProposal = chat.ingestProposal
 chatBridge.ingestVote = chat.ingestVote
 
+const isHistoryOpen = ref(false)
+
 async function onChatSubmit(text) {
   const result = await chat.submit(text)
-  if (result && result.ok === false && result.message) {
-    push({ kind: 'error', message: result.message })
+  if (result && result.ok === false) {
+    // Rate-limit silencieux (le bouton se réactive tout seul après 2s).
+    // Erreurs de commande visibles via toast.
+    if (result.message) push({ kind: 'error', message: result.message })
   }
 }
 
@@ -170,6 +180,29 @@ const stageState = computed(() => {
   if (roomConn.status.value !== 'connected') return 'connecting'
   if (roomConn.role.value === 'host' && !display.audioStream.value) return 'host-ready'
   return 'streaming'
+})
+
+// Le chat ne vit que pendant la diffusion (CHAT-DEDICACES.md §4.3).
+// Composer hide hors streaming. Dédicaces aussi.
+const isChatActive = computed(() => stageState.value === 'streaming' && isStreaming.value)
+
+// --- Messages système (CHAT-DEDICACES.md §5.4 voix) --------------------
+// On émet localement (jamais broadcasté — chaque client en construit
+// ses propres) un système-msg quand la diffusion démarre/s'arrête ou
+// que la main change.
+watch(isStreaming, (now, prev) => {
+  if (now && !prev) {
+    const hostPseudo = roomConn.host.value?.pseudo || 'Quelqu\'un'
+    chat.pushSystem(`${hostPseudo} a démarré la diffusion.`)
+  } else if (!now && prev) {
+    chat.pushSystem('Diffusion arrêtée.')
+  }
+})
+
+watch(() => roomConn.hostId.value, (newId, oldId) => {
+  if (!oldId || newId === oldId) return
+  const newHost = roomConn.peers.value.find(p => p.id === newId)
+  if (newHost) chat.pushSystem(`${newHost.pseudo} a la main.`)
 })
 
 // --- Cooldown demande de main (§5.1) ----------------------------------
@@ -405,7 +438,22 @@ const isDev = import.meta.env?.DEV ?? false
         @start="onStart"
         @stop="onStop"
         @request-floor="onRequestFloor"
-      />
+      >
+        <!-- Overlay dédicaces — uniquement quand le son tourne. -->
+        <template v-if="isChatActive" #dedications>
+          <FlDedications :items="chat.floating.value" />
+        </template>
+
+        <!-- Pill composer + bouton historique — idem. -->
+        <template v-if="isChatActive" #chat-bar>
+          <FlChatBar
+            :history-count="chat.historyCount.value"
+            :can-send="chat.canSend.value"
+            @submit="onChatSubmit"
+            @open-history="isHistoryOpen = true"
+          />
+        </template>
+      </FlStage>
 
       <aside class="room-sidebar" aria-label="Panneaux de la room">
         <!-- Ordre §4.5 (+ palette host) :
@@ -482,16 +530,6 @@ const isDev = import.meta.env?.DEV ?? false
       </aside>
     </div>
 
-    <!-- Bande chat pleine largeur, sous la stage + sidebar -->
-    <section class="room-chat-band" aria-label="Chat de la room">
-      <FlChatPanel
-        :messages="chat.messages.value"
-        :me-id="peerId"
-        @submit="onChatSubmit"
-        @vote="onChatVote"
-      />
-    </section>
-
     <!-- Élément audio caché — joue le stream du host pour les listeners -->
     <audio ref="audioEl" autoplay playsinline />
 
@@ -500,6 +538,16 @@ const isDev = import.meta.env?.DEV ?? false
       :initial-name="roomName"
       @save="saveRoomName"
       @cancel="isEditingName = false"
+    />
+
+    <FlChatHistoryDialog
+      v-if="isHistoryOpen"
+      :messages="chat.messages.value"
+      :me-id="peerId"
+      :can-send="chat.canSend.value"
+      @submit="onChatSubmit"
+      @vote="onChatVote"
+      @close="isHistoryOpen = false"
     />
   </div>
 </template>
@@ -558,24 +606,12 @@ const isDev = import.meta.env?.DEV ?? false
   color: var(--text-faint);
 }
 
-/* --- Bande chat pleine largeur (sous .room-body) --------------------- */
-.room-chat-band {
-  width: 100%;
-  max-width: var(--max-width-room);
-  margin: 0 auto;
-  padding: 0 var(--space-2xl) var(--space-2xl);
-  box-sizing: border-box;
-}
-
 /* §4.3 — sous 900px : une seule colonne, sidebar sous le stage */
 @media (max-width: 900px) {
   .room-body {
     grid-template-columns: 1fr;
     gap: var(--space-lg);
     padding: var(--space-lg);
-  }
-  .room-chat-band {
-    padding: 0 var(--space-lg) var(--space-lg);
   }
 }
 

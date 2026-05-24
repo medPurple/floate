@@ -14,7 +14,7 @@
   min-height 360px) + §4.4 du DS pour les copys.
 -->
 <script setup>
-import { computed } from 'vue'
+import { computed, useSlots } from 'vue'
 import FlButton from '../atoms/FlButton.vue'
 import FlLiveBadge from '../atoms/FlLiveBadge.vue'
 import FlSkeleton from '../atoms/FlSkeleton.vue'
@@ -90,10 +90,22 @@ const listenerWaitingLine = computed(() => {
   if (n === 1) return '1 personne attend.'
   return `${n} personnes attendent.`
 })
+
+// Le chat n'apparaît qu'en état streaming. On expose la présence des
+// slots pour ajuster la classe (padding-bottom + overflow:hidden) et
+// éviter que les dédicaces ne fuient hors du stage.
+const slots = useSlots()
+const hasChatBar = computed(() => !!slots['chat-bar'])
+const hasDedications = computed(() => !!slots.dedications)
+const hasChat = computed(() => hasChatBar.value || hasDedications.value)
 </script>
 
 <template>
-  <section class="fl-stage" :data-state="state">
+  <section class="fl-stage" :class="{ 'has-chat': hasChat }" :data-state="state">
+    <!-- Overlay dédicaces (position absolute, pointer-events:none).
+         Vit dans toutes les states mais le parent ne le rendra qu'en
+         streaming via le slot conditionnel. -->
+    <slot name="dedications" />
 
     <!-- État A : Connexion -->
     <template v-if="state === 'connecting'">
@@ -137,6 +149,12 @@ const listenerWaitingLine = computed(() => {
       <p class="fl-stage-status">{{ statusLine }}</p>
 
       <FlVisualizer :bars="bars" />
+
+      <!-- Pill flottante composer + bouton historique. Visible
+           uniquement quand le parent fournit le slot. -->
+      <div v-if="hasChatBar" class="fl-stage-chat-bar">
+        <slot name="chat-bar" />
+      </div>
 
       <div class="fl-stage-actions">
         <!-- Host en diffusion : seul cas où btn-danger est légitime (§3.1). -->
@@ -183,6 +201,23 @@ const listenerWaitingLine = computed(() => {
   text-align: center;
   box-shadow: var(--shadow);
   position: relative;
+}
+
+/* Quand le chat est actif, on empêche les dédicaces de fuir hors du
+   stage (overflow:hidden) et on réserve un peu d'espace en bas pour la
+   pill composer. */
+.fl-stage.has-chat {
+  overflow: hidden;
+}
+
+/* Pill composer : centrée, largeur max pour rester lisible. */
+.fl-stage-chat-bar {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-sm);
+  position: relative;
+  z-index: 3;
 }
 
 .fl-stage-label {
