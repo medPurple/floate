@@ -80,8 +80,6 @@ function onEnter(e) {
   align-items: center;
   gap: var(--space-xs);
   width: 100%;
-  max-width: 560px;
-  margin: 0 auto;
   background: rgba(24, 23, 31, 0.85);
   border: 1px solid var(--border);
   border-radius: var(--radius-pill);

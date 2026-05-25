@@ -14,7 +14,7 @@
   min-height 360px) + §4.4 du DS pour les copys.
 -->
 <script setup>
-import { computed, useSlots } from 'vue'
+import { computed } from 'vue'
 import FlButton from '../atoms/FlButton.vue'
 import FlLiveBadge from '../atoms/FlLiveBadge.vue'
 import FlSkeleton from '../atoms/FlSkeleton.vue'
@@ -49,7 +49,10 @@ const props = defineProps({
   /** Secondes restantes pour le btn-pending. */
   floorCountdown: { type: Number, default: 0 },
   /** Barres optionnelles à passer au visualizer (Float32Array [0..1]). */
-  bars: { type: [Array, Float32Array], default: null }
+  bars: { type: [Array, Float32Array], default: null },
+  /** Active le layout chat (overlay dédicaces + pill composer en bas).
+      Cf. CHAT-DEDICACES.md §4.3 — actif uniquement quand le son tourne. */
+  hasChat: { type: Boolean, default: false }
 })
 
 defineEmits(['start', 'stop', 'request-floor'])
@@ -90,14 +93,6 @@ const listenerWaitingLine = computed(() => {
   if (n === 1) return '1 personne attend.'
   return `${n} personnes attendent.`
 })
-
-// Le chat n'apparaît qu'en état streaming. On expose la présence des
-// slots pour ajuster la classe (padding-bottom + overflow:hidden) et
-// éviter que les dédicaces ne fuient hors du stage.
-const slots = useSlots()
-const hasChatBar = computed(() => !!slots['chat-bar'])
-const hasDedications = computed(() => !!slots.dedications)
-const hasChat = computed(() => hasChatBar.value || hasDedications.value)
 </script>
 
 <template>
@@ -150,9 +145,10 @@ const hasChat = computed(() => hasChatBar.value || hasDedications.value)
 
       <FlVisualizer :bars="bars" />
 
-      <!-- Pill flottante composer + bouton historique. Visible
-           uniquement quand le parent fournit le slot. -->
-      <div v-if="hasChatBar" class="fl-stage-chat-bar">
+      <!-- Pill flottante composer + bouton historique. Toujours présente
+           quand hasChat est vrai — le parent ne provisionne le slot que
+           dans cet état, donc le wrapper reste vide sinon. -->
+      <div v-if="hasChat" class="fl-stage-chat-bar">
         <slot name="chat-bar" />
       </div>
 
@@ -210,11 +206,9 @@ const hasChat = computed(() => hasChatBar.value || hasDedications.value)
   overflow: hidden;
 }
 
-/* Pill composer : centrée, largeur max pour rester lisible. */
+/* Wrapper pleine largeur de la pill composer. */
 .fl-stage-chat-bar {
   width: 100%;
-  display: flex;
-  justify-content: center;
   margin-top: var(--space-sm);
   position: relative;
   z-index: 3;
