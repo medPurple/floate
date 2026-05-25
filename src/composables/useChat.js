@@ -22,6 +22,7 @@
  */
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { executeCommand } from '../lib/commands.js'
+import { containsBanword } from '../lib/banwords.js'
 // L'import enregistre la commande dans le registry global.
 import '../lib/commands/proposer.js'
 
@@ -122,6 +123,14 @@ export function useChat({ peerId, pseudo, isHost, sendChat, sendProposal, sendVo
     }
     const text = String(rawText || '').trim()
     if (!text) return { ok: false, reason: 'empty' }
+
+    // -- Banword filter (cf. lib/banwords.js) --
+    // On déclenche le cooldown pour décourager le testing en boucle,
+    // et on renvoie un message neutre — sans répéter le mot fautif.
+    if (containsBanword(text)) {
+      startCooldown()
+      return { ok: false, reason: 'banword', message: 'Message refusé.' }
+    }
 
     // -- Commande --
     if (text.startsWith('/')) {

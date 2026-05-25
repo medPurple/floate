@@ -111,7 +111,8 @@ function hostnameOf(url) {
 <style scoped>
 .fl-dedications {
   position: absolute;
-  inset: 24px 0 96px 0;
+  /* Léger retrait latéral : les bulles ne collent pas au bord du stage. */
+  inset: 24px 16px 96px 16px;
   pointer-events: none;
   display: flex;
   justify-content: space-between;
@@ -246,7 +247,7 @@ function hostnameOf(url) {
 }
 
 @media (max-width: 600px) {
-  .fl-dedications { inset: 16px 0 80px 0; }
+  .fl-dedications { inset: 16px 12px 80px 12px; }
   .col { width: clamp(140px, 38%, 200px); }
   .dedication { max-width: 200px; }
 }
