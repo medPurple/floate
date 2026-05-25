@@ -182,10 +182,6 @@ const stageState = computed(() => {
   return 'streaming'
 })
 
-// Le chat ne vit que pendant la diffusion (CHAT-DEDICACES.md §4.3).
-// Composer hide hors streaming. Dédicaces aussi.
-const isChatActive = computed(() => stageState.value === 'streaming' && isStreaming.value)
-
 // --- Messages système (CHAT-DEDICACES.md §5.4 voix) --------------------
 // On émet localement (jamais broadcasté — chaque client en construit
 // ses propres) un système-msg quand la diffusion démarre/s'arrête ou
@@ -439,13 +435,15 @@ const isDev = import.meta.env?.DEV ?? false
         @stop="onStop"
         @request-floor="onRequestFloor"
       >
-        <!-- Overlay dédicaces — uniquement quand le son tourne. -->
-        <template v-if="isChatActive" #dedications>
+        <!-- Overlay dédicaces. Toujours fourni (le composant gère sa
+             propre visibilité via items vide). -->
+        <template #dedications>
           <FlDedications :items="chat.floating.value" />
         </template>
 
-        <!-- Pill composer + bouton historique — idem. -->
-        <template v-if="isChatActive" #chat-bar>
+        <!-- Pill composer + bouton historique. Le slot est toujours
+             fourni ; FlStage le n'enveloppe que si isStreaming=true. -->
+        <template #chat-bar>
           <FlChatBar
             :history-count="chat.historyCount.value"
             :can-send="chat.canSend.value"

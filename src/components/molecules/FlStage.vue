@@ -49,10 +49,7 @@ const props = defineProps({
   /** Secondes restantes pour le btn-pending. */
   floorCountdown: { type: Number, default: 0 },
   /** Barres optionnelles à passer au visualizer (Float32Array [0..1]). */
-  bars: { type: [Array, Float32Array], default: null },
-  /** Active le layout chat (overlay dédicaces + pill composer en bas).
-      Cf. CHAT-DEDICACES.md §4.3 — actif uniquement quand le son tourne. */
-  hasChat: { type: Boolean, default: false }
+  bars: { type: [Array, Float32Array], default: null }
 })
 
 defineEmits(['start', 'stop', 'request-floor'])
@@ -96,7 +93,7 @@ const listenerWaitingLine = computed(() => {
 </script>
 
 <template>
-  <section class="fl-stage" :class="{ 'has-chat': hasChat }" :data-state="state">
+  <section class="fl-stage" :class="{ 'has-chat': isStreaming && state === 'streaming' }" :data-state="state">
     <!-- Overlay dédicaces (position absolute, pointer-events:none).
          Vit dans toutes les states mais le parent ne le rendra qu'en
          streaming via le slot conditionnel. -->
@@ -145,10 +142,11 @@ const listenerWaitingLine = computed(() => {
 
       <FlVisualizer :bars="bars" />
 
-      <!-- Pill flottante composer + bouton historique. Toujours présente
-           quand hasChat est vrai — le parent ne provisionne le slot que
-           dans cet état, donc le wrapper reste vide sinon. -->
-      <div v-if="hasChat" class="fl-stage-chat-bar">
+      <!-- Pill flottante composer + bouton historique. Visible dès que
+           le son tourne (CHAT-DEDICACES.md §4.3). On se base sur
+           isStreaming — la même source que le live badge et le bouton
+           "Arrêter la diffusion", donc garanti réactif. -->
+      <div v-if="isStreaming" class="fl-stage-chat-bar">
         <slot name="chat-bar" />
       </div>
 
