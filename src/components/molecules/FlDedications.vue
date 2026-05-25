@@ -192,11 +192,25 @@ function hostnameOf(url) {
 }
 .is-proposal .text { color: var(--accent); font-weight: 500; }
 
+/* Messages système : pill discrète mais lisible — fond translucide
+   + blur léger pour les détacher de host-name / status sans crier
+   visuellement. CHAT-DEDICACES.md §5.4 (voix système). */
 .is-system {
-  background: transparent;
-  border-color: transparent;
-  backdrop-filter: none;
-  padding: 4px 8px;
+  background: rgba(34, 31, 43, 0.55);
+  border-color: rgba(42, 39, 53, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  padding: 3px 10px;
+}
+:root[data-theme="light"] .is-system {
+  background: rgba(250, 243, 234, 0.62);
+  border-color: rgba(221, 208, 188, 0.45);
+}
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] .is-system {
+    background: rgba(250, 243, 234, 0.62);
+    border-color: rgba(221, 208, 188, 0.45);
+  }
 }
 .system-text {
   font-style: italic;

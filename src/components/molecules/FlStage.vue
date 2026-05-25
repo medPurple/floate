@@ -200,17 +200,21 @@ const listenerWaitingLine = computed(() => {
 }
 
 /* Quand le chat est actif, on empêche les dédicaces de fuir hors du
-   stage (overflow:hidden) et on réserve un peu d'espace en bas pour la
-   pill composer. */
+   stage (overflow:hidden) et on réserve l'espace en bas pour la pill
+   composer (qui flotte en absolute, indépendamment du flux flex). */
 .fl-stage.has-chat {
   overflow: hidden;
+  padding-bottom: 84px;
 }
 
-/* Wrapper pleine largeur de la pill composer. */
+/* Pill composer ancrée au bas du stage — CHAT-DEDICACES.md §4.3.
+   Position absolue : reste visible quelle que soit la hauteur du stage
+   et indépendamment du flux des autres éléments (visualizer, actions). */
 .fl-stage-chat-bar {
-  width: 100%;
-  margin-top: var(--space-sm);
-  position: relative;
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 16px;
   z-index: 3;
 }
 
