@@ -356,3 +356,183 @@ h1, h2, h3, h4, h5, h6, p { margin: 0; }
   white-space: nowrap;
   border: 0;
 }
+
+/* -------------------------------------------------------------
+   6. Footer app (Lobby variants)
+   ------------------------------------------------------------- */
+.app-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-elev) 82%, transparent);
+}
+
+.footer-inner {
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  padding: 14px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+.footer-inner p {
+  margin: 0;
+}
+
+.footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.footer-link:hover,
+.footer-link:focus-visible {
+  color: var(--text-dim);
+}
+
+/* -------------------------------------------------------------
+   7. Pages institutionnelles (contact, infos)
+   ------------------------------------------------------------- */
+.page {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+.page-header {
+  padding: 24px 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.page-brand {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: lowercase;
+}
+
+.page-hero {
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 44px;
+  padding-bottom: 28px;
+}
+
+.page-eyebrow {
+  margin: 0;
+  font-size: var(--fs-mini);
+  font-weight: 700;
+  letter-spacing: var(--tracking-label);
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.page-title {
+  margin: 10px 0 0;
+  font-size: clamp(30px, 5.6vw, 38px);
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.page-lead {
+  margin: 16px 0 0;
+  max-width: 56ch;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.page-section + .page-section {
+  margin-top: 34px;
+}
+
+.page-prose {
+  max-width: 64ch;
+  color: var(--text);
+}
+
+.page-prose h2 {
+  margin: 0 0 16px;
+}
+
+.page-prose h3 {
+  margin: 26px 0 10px;
+  font-size: var(--fs-h2);
+  line-height: 1.35;
+}
+
+.page-prose p,
+.page-prose li {
+  margin: 0;
+  font-size: var(--fs-body);
+  line-height: 1.65;
+  color: var(--text);
+}
+
+.page-prose p + p,
+.page-prose p + ul,
+.page-prose ul + p,
+.page-prose ul + ul {
+  margin-top: 12px;
+}
+
+.page-prose ul {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.page-prose a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.page-prose a:hover,
+.page-prose a:focus-visible {
+  text-decoration: underline;
+}
+
+.page-meta {
+  margin: 40px 0 0;
+  font-size: var(--fs-mini);
+  color: var(--text-faint);
+}
+
+/* -------------------------------------------------------------
+   8. Responsive globals
+   ------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .footer-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: 0 16px 60px;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-title {
+    font-size: clamp(28px, 8vw, 34px);
+  }
+}

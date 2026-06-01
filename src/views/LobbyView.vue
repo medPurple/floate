@@ -44,6 +44,30 @@ const visibilityOptions = [
   { label: 'Privée',   value: 'private' }
 ]
 
+const FOOTER_VARIANT = String(import.meta.env.VITE_FOOTER_VARIANT || 'A').toUpperCase()
+const BUYMEACOFFEE_URL = String(import.meta.env.VITE_BUYMEACOFFEE_URL || '').trim()
+
+const footerCopy = computed(() => {
+  switch (FOOTER_VARIANT) {
+    case 'B':
+      return {
+        text: 'floate reste gratuit. Si ça vous aide, vous pouvez soutenir le projet.',
+        showSupport: Boolean(BUYMEACOFFEE_URL)
+      }
+    case 'C':
+      return {
+        text: 'floate permet d’écouter ensemble en synchro, sans compte. Si vous aimez, vous pouvez soutenir.',
+        showSupport: Boolean(BUYMEACOFFEE_URL)
+      }
+    case 'A':
+    default:
+      return {
+        text: 'floate est gratuit en bêta. Merci pour vos retours.',
+        showSupport: false
+      }
+  }
+})
+
 // La règle d'or impose une seule btn-primary visible à la fois.
 const joinVariant = computed(() => creating.value ? 'secondary' : 'primary')
 
@@ -169,6 +193,7 @@ watch(helpOpen, (open) => {
         >
           Comment ça marche ?
         </button>
+        <a class="nav-link" href="./infos.html">Infos</a>
         <FlThemeToggle />
         <span class="version">v0.1</span>
       </div>
@@ -296,6 +321,25 @@ watch(helpOpen, (open) => {
         Aucune room publique pour l'instant. Crée la première.
       </p>
     </section>
+
+    <footer class="app-footer">
+      <div class="footer-inner">
+        <p>{{ footerCopy.text }}</p>
+        <div class="footer-links">
+          <a
+            v-if="footerCopy.showSupport"
+            class="footer-link"
+            :href="BUYMEACOFFEE_URL"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Soutenir floate
+          </a>
+          <a class="footer-link" href="./contact.html">Contact</a>
+          <a class="footer-link" href="./infos.html">Infos &amp; conditions</a>
+        </div>
+      </div>
+    </footer>
   </main>
 </template>
 
