@@ -38,6 +38,7 @@ import { usePalette } from '../composables/usePalette.js'
 import { useRoomConnection } from '../composables/useRoomConnection.js'
 import { useDisplayCapture } from '../composables/useDisplayCapture.js'
 import { useChat } from '../composables/useChat.js'
+import { useStreamHealth } from '../composables/useStreamHealth.js'
 import { PALETTES } from '../lib/palettes.js'
 
 const props = defineProps({
@@ -101,7 +102,8 @@ const roomConn = useRoomConnection({
   onChatMessage: (msg) => chatBridge.ingestChat(msg),
   onProposalCreated: (msg) => chatBridge.ingestProposal(msg),
   onProposalVote: (msg) => chatBridge.ingestVote(msg),
-  onRoomNameChanged: (name) => push({ kind: 'info', message: `Room renommée : ${name}` })
+  onRoomNameChanged: (name) => push({ kind: 'info', message: `Room renommée : ${name}` }),
+  onRoomTagChanged: () => { /* le header reflète automatiquement via roomTag */ }
 })
 
 // Nom de la room — source de vérité = roomConn.roomName (qui vient
@@ -141,7 +143,7 @@ function onChatVote(proposalId, value) {
   chat.castVote(proposalId, value)
 }
 
-// --- Renommage de la room (host uniquement) ----------------------------
+// --- Édition de la room (nom + tag, host uniquement) -------------------
 const isEditingName = ref(false)
 
 function openRenameDialog() {
@@ -149,11 +151,18 @@ function openRenameDialog() {
   isEditingName.value = true
 }
 
-function saveRoomName(next) {
-  const result = roomConn.setRoomName(next)
+function saveRoomEdit({ name, tag }) {
+  // Le serveur valide chacun indépendamment, donc on peut appeler les
+  // deux dans l'ordre. setRoomName ne fait rien si vide ou inchangé,
+  // setRoomTag idem si null === null.
+  const nameResult = roomConn.setRoomName(name)
+  const tagResult = roomConn.setRoomTag(tag)
   isEditingName.value = false
-  if (!result.ok && result.reason !== 'empty') {
+  if (!nameResult.ok && nameResult.reason !== 'empty') {
     push({ kind: 'error', message: 'Impossible de renommer la room.' })
+  }
+  if (!tagResult.ok) {
+    push({ kind: 'error', message: 'Impossible de changer le tag.' })
   }
 }
 
@@ -180,6 +189,19 @@ const stageState = computed(() => {
   if (roomConn.status.value !== 'connected') return 'connecting'
   if (roomConn.role.value === 'host' && !display.audioStream.value) return 'host-ready'
   return 'streaming'
+})
+
+// --- Santé du flux entrant (listener uniquement) -----------------------
+// On poll getStats() sur la PeerConnection du host pour détecter les
+// distorsions (PLC) et les coupures. Quand ça flanche, on met l'audio
+// en pause au lieu de laisser WebRTC accélérer/ralentir la lecture.
+// Reprise auto dès que la réception est stable 3s d'affilée.
+const isListenerReceiving = computed(() =>
+  roomConn.role.value === 'listener' && isStreaming.value
+)
+const streamHealth = useStreamHealth({
+  getStats: () => roomConn.getPeerStats(roomConn.hostId.value),
+  active: isListenerReceiving
 })
 
 // --- Messages système (CHAT-DEDICACES.md §5.4 voix) --------------------
@@ -328,6 +350,20 @@ watch(activeStream, (stream) => {
   }
 })
 
+// Pause / play en fonction de la santé de la réception. Reprise auto
+// dès que streamHealth.health repasse à 'good' (cf. useStreamHealth).
+// On évite le toggle quand on est host (qui ne lit pas son propre flux).
+watch(() => streamHealth.health.value, (h) => {
+  if (!audioEl.value) return
+  if (roomConn.role.value === 'host') return
+  if (!activeStream.value) return
+  if (h === 'good') {
+    audioEl.value.play().catch(() => { /* autoplay bloqué */ })
+  } else {
+    audioEl.value.pause()
+  }
+})
+
 async function onAudioOutputChange(deviceId) {
   if (!audioEl.value || typeof audioEl.value.setSinkId !== 'function') return
   try { await audioEl.value.setSinkId(deviceId) }
@@ -413,6 +449,7 @@ const isDev = import.meta.env?.DEV ?? false
 
     <FlRoomHeader
       :room-name="roomName"
+      :tag="roomConn.roomTag.value"
       :visibility="visibility"
       :can-edit="roomConn.role.value === 'host'"
       @leave="leave"
@@ -431,6 +468,7 @@ const isDev = import.meta.env?.DEV ?? false
         :floor-state="floorState"
         :floor-countdown="floorCountdown"
         :bars="bars"
+        :stream-health="streamHealth.health.value"
         @start="onStart"
         @stop="onStop"
         @request-floor="onRequestFloor"
@@ -534,7 +572,8 @@ const isDev = import.meta.env?.DEV ?? false
     <FlRoomNameDialog
       v-if="isEditingName"
       :initial-name="roomName"
-      @save="saveRoomName"
+      :initial-tag="roomConn.roomTag.value"
+      @save="saveRoomEdit"
       @cancel="isEditingName = false"
     />
 

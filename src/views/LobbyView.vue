@@ -19,6 +19,7 @@ import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
 import { newCode, normalizeCode } from '../lib/code.js'
 import { ADMIN_HTTP_URL } from '../lib/config.js'
+import { getTag } from '../lib/tags.js'
 
 const router = useRouter()
 const { push } = useToasts()
@@ -286,7 +287,16 @@ watch(helpOpen, (open) => {
       <ul v-if="publicRooms.length" class="rooms-list">
         <li v-for="room in publicRooms" :key="room.code">
           <button class="room-item" type="button" @click="joinPublic(room)">
-            <span class="room-name">{{ room.name }}</span>
+            <span class="room-title">
+              <span class="room-name">{{ room.name }}</span>
+              <span
+                v-if="getTag(room.tag)"
+                class="room-tag"
+                :style="{ color: getTag(room.tag).color }"
+              >
+                {{ getTag(room.tag).label }}
+              </span>
+            </span>
             <span class="room-meta">{{ room.participants }} part.</span>
             <span class="room-arrow" aria-hidden="true">→</span>
           </button>
@@ -546,7 +556,26 @@ watch(helpOpen, (open) => {
   border-radius: var(--radius-lg);
 }
 
+.room-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
 .room-name { font-weight: 500; }
+.room-tag {
+  font-size: var(--fs-mini);
+  font-weight: 600;
+  position: relative;
+  padding-left: 10px;
+}
+.room-tag::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--text-faint);
+  font-weight: 400;
+}
 .room-meta { color: var(--text-dim); font-size: var(--fs-meta); }
 .room-arrow { color: var(--text-faint); transition: color var(--duration-fast) var(--easing-default); }
 .room-item:hover .room-arrow { color: var(--accent); }

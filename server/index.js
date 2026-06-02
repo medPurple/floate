@@ -17,6 +17,7 @@ import http from 'node:http'
 import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
 import { DEFAULT_PALETTE_ID, isPaletteId } from '../src/lib/palettes.js'
+import { isTagId } from '../src/lib/tags.js'
 
 import {
   trackVisit, trackSessionClosed, trackEvent,
@@ -120,6 +121,7 @@ function listPublicRooms() {
     out.push({
       code,
       name: room._name || `Room ${code}`,
+      tag: room._tag || null,
       participants: room.size
     })
   }
@@ -183,6 +185,7 @@ function getRoom(code) {
     room._streaming = new Set()
     room._name = null
     room._palette = DEFAULT_PALETTE_ID
+    room._tag = null
     rooms.set(code, room)
   }
   return rooms.get(code)
@@ -266,6 +269,7 @@ wssSignaling.on('connection', (ws) => {
         peers: publicPeers(room),
         hostId: hostOf(room),
         roomName: room._name,
+        roomTag: room._tag || null,
         palette: room._palette || DEFAULT_PALETTE_ID
       }))
 
@@ -360,6 +364,21 @@ wssSignaling.on('connection', (ws) => {
       if (room._name === next) return
       room._name = next
       broadcast(myRoom, { type: 'room-name-changed', name: next })
+    }
+
+    // -- Host change le tag de genre de la room. tag === null retire le tag.
+    //    On valide via isTagId pour ne pas accepter n'importe quel string.
+    else if (msg.type === 'room-tag-change') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room) return
+      if (hostOf(room) !== myId) return
+      const raw = msg.tag
+      const next = raw === null || raw === '' ? null : (isTagId(raw) ? raw : undefined)
+      if (next === undefined) return
+      if (room._tag === next) return
+      room._tag = next
+      broadcast(myRoom, { type: 'room-tag-changed', tag: next })
     }
 
     // -- Proposition (commande /proposer). Relais, pas de stockage —

@@ -1,14 +1,21 @@
 <!--
   FlRoomHeader — DESIGN-SYSTEM.md §4.2
-  Header glass : brand + nom de room + tag visibilité + Quitter.
+  Header glass : brand + nom + tag de genre + crayon + tag visibilité + Quitter.
   Padding 18/28, fond glass blur, bordure basse.
+
+  Le tag de genre est juste un mot coloré (cf. lib/tags.js) — pas de
+  badge, pas de fond, pour rester léger à côté du nom de room.
 -->
 <script setup>
+import { computed } from 'vue'
 import FlButton from '../atoms/FlButton.vue'
 import FlThemeToggle from '../atoms/FlThemeToggle.vue'
+import { getTag } from '../../lib/tags.js'
 
-defineProps({
+const props = defineProps({
   roomName: { type: String, required: true },
+  /** Id du tag de genre (null si aucun). Voir lib/tags.js. */
+  tag: { type: String, default: null },
   visibility: {
     type: String,
     default: 'private',
@@ -19,6 +26,8 @@ defineProps({
 })
 
 defineEmits(['leave', 'edit-name'])
+
+const tagInfo = computed(() => getTag(props.tag))
 </script>
 
 <template>
@@ -26,12 +35,20 @@ defineEmits(['leave', 'edit-name'])
     <div class="fl-room-header-left">
       <router-link to="/" class="brand">floate</router-link>
       <h1 class="room-name">{{ roomName }}</h1>
+      <span
+        v-if="tagInfo"
+        class="room-tag"
+        :style="{ color: tagInfo.color }"
+        :title="`Genre : ${tagInfo.label}`"
+      >
+        {{ tagInfo.label }}
+      </span>
       <button
         v-if="canEdit"
         type="button"
         class="rename-btn"
-        aria-label="Renommer la room"
-        title="Renommer la room"
+        aria-label="Modifier la room"
+        title="Modifier le nom et le tag"
         @click="$emit('edit-name')"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -108,6 +125,24 @@ defineEmits(['leave', 'edit-name'])
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Tag de genre — juste un mot coloré, pas de fond ni de bordure.
+   Préfixé par un séparateur "·" pour respirer à côté du nom. */
+.room-tag {
+  font-size: var(--fs-body-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  flex-shrink: 0;
+  position: relative;
+  padding-left: 12px;
+}
+.room-tag::before {
+  content: '·';
+  position: absolute;
+  left: 0;
+  color: var(--text-faint);
+  font-weight: 400;
 }
 
 .rename-btn {

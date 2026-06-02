@@ -19,6 +19,7 @@ import FlButton from '../atoms/FlButton.vue'
 import FlLiveBadge from '../atoms/FlLiveBadge.vue'
 import FlSkeleton from '../atoms/FlSkeleton.vue'
 import FlStepper from '../atoms/FlStepper.vue'
+import FlStreamPaused from '../atoms/FlStreamPaused.vue'
 import FlVisualizer from '../atoms/FlVisualizer.vue'
 
 const props = defineProps({
@@ -49,7 +50,15 @@ const props = defineProps({
   /** Secondes restantes pour le btn-pending. */
   floorCountdown: { type: Number, default: 0 },
   /** Barres optionnelles à passer au visualizer (Float32Array [0..1]). */
-  bars: { type: [Array, Float32Array], default: null }
+  bars: { type: [Array, Float32Array], default: null },
+  /** Santé du flux entrant (listener uniquement) — 'good' | 'poor' | 'lost'.
+      Si != good, on swap le visualizer pour FlStreamPaused et on adapte
+      la status line. Le host n'est pas concerné (il ne reçoit pas). */
+  streamHealth: {
+    type: String,
+    default: 'good',
+    validator: v => ['good', 'poor', 'lost'].includes(v)
+  }
 })
 
 defineEmits(['start', 'stop', 'request-floor'])
@@ -74,6 +83,10 @@ const statusLine = computed(() => {
     return `Tu diffuses pour ${n} personnes.`
   }
   if (props.role === 'listener' && props.isStreaming) {
+    // Mute la status line "Diffusion en cours" quand le signal flanche —
+    // FlStreamPaused (qui remplace le visualizer) porte déjà le message.
+    if (props.streamHealth === 'lost') return 'Son en pause — réception coupée.'
+    if (props.streamHealth === 'poor') return 'Son en pause — réception instable.'
     return 'Diffusion en cours.'
   }
   if (props.role === 'listener' && !props.isStreaming) {
@@ -83,6 +96,12 @@ const statusLine = computed(() => {
   }
   return ''
 })
+
+// Quand swap-t-on le visualizer pour FlStreamPaused ?
+// Listener qui reçoit un flux mais dont la réception est mauvaise.
+const showStreamPaused = computed(() =>
+  props.role === 'listener' && props.isStreaming && props.streamHealth !== 'good'
+)
 
 const listenerWaitingLine = computed(() => {
   const n = props.listenerCount
@@ -140,7 +159,11 @@ const listenerWaitingLine = computed(() => {
 
       <p class="fl-stage-status">{{ statusLine }}</p>
 
-      <FlVisualizer :bars="bars" />
+      <!-- Swap visualizer ↔ FlStreamPaused selon la santé de la réception.
+           Listener avec signal dégradé → on cache les barres animées
+           (qui n'auraient pas de sens, le son ne joue pas). -->
+      <FlStreamPaused v-if="showStreamPaused" :state="streamHealth" />
+      <FlVisualizer v-else :bars="bars" />
 
       <!-- Pill flottante composer + bouton historique. Visible dès que
            le son tourne (CHAT-DEDICACES.md §4.3). On se base sur

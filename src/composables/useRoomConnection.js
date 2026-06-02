@@ -67,7 +67,8 @@ async function boostSenderBitrate(pc) {
 export function useRoomConnection({
   code, pseudo, roomName: initialRoomName = null, visibility = null,
   onFloorRequest, onRemoteStream,
-  onChatMessage, onProposalCreated, onProposalVote, onRoomNameChanged
+  onChatMessage, onProposalCreated, onProposalVote,
+  onRoomNameChanged, onRoomTagChanged
 }) {
   const { peerId } = useSession()
 
@@ -80,6 +81,8 @@ export function useRoomConnection({
   // Nom de la room — autorité = serveur (welcome + room-name-changed).
   // Si null, c'est à l'UI de fallback sur « Room {code} ».
   const roomName = ref(initialRoomName || null)
+  // Tag de genre (id) — autorité = serveur. null = aucun tag.
+  const roomTag = ref(null)
 
   const me = computed(() => peers.value.find(p => p.id === peerId.value) || null)
   const host = computed(() => peers.value.find(p => p.id === hostId.value) || null)
@@ -224,6 +227,8 @@ export function useRoomConnection({
       if (typeof msg.roomName === 'string' && msg.roomName) {
         roomName.value = msg.roomName
       }
+      // roomTag peut être string (id) ou null (aucun)
+      roomTag.value = typeof msg.roomTag === 'string' ? msg.roomTag : null
       status.value = 'connected'
       // J'initie une RTCPeerConnection vers chaque peer déjà présent.
       for (const p of peers.value) {
@@ -264,6 +269,13 @@ export function useRoomConnection({
       if (!next) return
       roomName.value = next
       onRoomNameChanged?.(next)
+    },
+
+    'room-tag-changed'(msg) {
+      // msg.tag : string (id) ou null (retiré)
+      const next = typeof msg.tag === 'string' ? msg.tag : null
+      roomTag.value = next
+      onRoomTagChanged?.(next)
     },
 
     'chat-message'(msg) {
@@ -348,6 +360,17 @@ export function useRoomConnection({
     signaling.send({ type: 'request-floor' })
   }
 
+  /**
+   * Renvoie la RTCStatsReport du peer (ou null si pas de PC).
+   * Utilisé par useStreamHealth côté listener pour surveiller la santé
+   * du stream du host (conceal rate, packets reçus).
+   */
+  function getPeerStats(remotePeerId) {
+    const pc = connections.get(remotePeerId)
+    if (!pc) return Promise.resolve(null)
+    return pc.getStats()
+  }
+
   function changeHost(newHostId) {
     signaling.send({ type: 'host-change', newHostId })
   }
@@ -367,6 +390,18 @@ export function useRoomConnection({
     if (!next) return { ok: false, reason: 'empty' }
     if (next === roomName.value) return { ok: true, unchanged: true }
     signaling.send({ type: 'room-name-change', name: next })
+    return { ok: true }
+  }
+
+  /**
+   * Host change le tag de genre. Passer null pour retirer le tag.
+   * Le serveur valide via isTagId() avant de persister + broadcast.
+   */
+  function setRoomTag(id) {
+    if (role.value !== 'host') return { ok: false, reason: 'not-host' }
+    const next = id === null || id === '' ? null : String(id)
+    if (next === roomTag.value) return { ok: true, unchanged: true }
+    signaling.send({ type: 'room-tag-change', tag: next })
     return { ok: true }
   }
 
@@ -450,14 +485,15 @@ export function useRoomConnection({
   return {
     // State
     peers, hostId, status, lastError,
-    palette, roomName,
+    palette, roomName, roomTag,
     me, host, role, listenerCount,
     hostSharedLink,
     localStream,
     // Actions
     attachStream, detachStream,
     requestFloor, changeHost, changePalette, setHostSharedLink,
-    setRoomName,
-    sendChatMessage, sendProposal, sendProposalVote
+    setRoomName, setRoomTag,
+    sendChatMessage, sendProposal, sendProposalVote,
+    getPeerStats
   }
 }
