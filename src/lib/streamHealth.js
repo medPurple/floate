@@ -8,25 +8,32 @@
  * Mieux vaut couper le son et le reprendre quand le réseau est OK,
  * comme une radio qui perd le signal.
  *
+ * Stratégie anti faux-positifs (suite au feedback "trop sensible") :
+ *   1. GRACE_PERIOD_MS — on ignore l'état pendant les premières secondes
+ *      après l'attache (le jitter buffer de WebRTC met du temps à se
+ *      caler, c'est normal d'avoir un peu de PLC au début).
+ *   2. CONSECUTIVE_BAD_POLLS — pour passer en 'poor', il faut N polls
+ *      consécutifs au-dessus du seuil. Un pic isolé ne déclenche pas.
+ *   3. Seuils volontairement larges (15% conceal, 4s sans paquets).
+ *      L'idée est de ne couper que quand c'est vraiment audible, pas
+ *      à la moindre micro-perturbation.
+ *
  * Métriques utilisées (RTCInboundRtpStreamStats, kind=audio) :
  *  - concealedSamples / totalSamplesReceived → taux d'échantillons
- *    "comblés" par WebRTC quand des paquets manquent (PLC). C'est le
- *    meilleur signal de "le son que j'entends est en train d'être inventé".
+ *    "comblés" par WebRTC quand des paquets manquent (PLC).
  *  - bytesReceived → si le compteur stagne pendant N secondes, le flux
- *    est complètement coupé (pas juste dégradé).
- *
- * Seuils (option "strict") :
- *  - Pause si conceal rate > 5% sur l'intervalle, ou bytes flat > 2s
- *  - Reprise si conceal rate < 1% pendant 3s continus
+ *    est complètement coupé.
  *
  * Les fonctions sont pures : testables sans Vue, sans WebRTC.
  */
 
-export const POLL_INTERVAL_MS = 1000
-export const POOR_CONCEAL_RATE = 0.05
-export const RECOVER_CONCEAL_RATE = 0.01
-export const NO_PACKETS_MS = 2000
-export const RECOVER_MS = 3000
+export const POLL_INTERVAL_MS = 1500
+export const POOR_CONCEAL_RATE = 0.15
+export const RECOVER_CONCEAL_RATE = 0.05
+export const NO_PACKETS_MS = 4000
+export const RECOVER_MS = 2000
+export const GRACE_PERIOD_MS = 5000
+export const CONSECUTIVE_BAD_POLLS = 2
 
 /**
  * Extrait le report inbound-rtp audio d'un RTCStatsReport.
@@ -59,13 +66,20 @@ export function computeConcealRate(prev, curr) {
  * Machine d'état health.
  *
  * Inputs :
- *  - state : { health, reason, prev, lastBytesIncreaseAt, cleanSince }
+ *  - state : voir initialHealthState
  *  - inbound : RTCInboundRtpStreamStats actuel (peut être null)
  *  - now : timestamp ms
  *
  * Output : nouveau state (immutable update).
  *
- * Si inbound est null, on garde l'état précédent (pas de signal exploitable).
+ * Règles :
+ *  - Pendant la grace period (5s après startedAt), on reste 'good'
+ *    quelles que soient les métriques.
+ *  - On passe 'lost' immédiatement après NO_PACKETS_MS sans bytes.
+ *  - On passe 'poor' seulement après CONSECUTIVE_BAD_POLLS polls
+ *    consécutifs au-dessus du seuil de conceal.
+ *  - Retour à 'good' après RECOVER_MS continus en dessous du seuil
+ *    bas de conceal.
  */
 export function nextHealthState(state, inbound, now) {
   if (!inbound) return state
@@ -76,23 +90,44 @@ export function nextHealthState(state, inbound, now) {
 
   const lastBytesIncreaseAt = bytesIncreased ? now : state.lastBytesIncreaseAt
   const stalledMs = now - lastBytesIncreaseAt
+  const sinceStart = now - state.startedAt
 
   const concealRate = computeConcealRate(state.prev, inbound)
+  const isPollBad = concealRate > POOR_CONCEAL_RATE
+
+  // Compteur de polls consécutifs au-dessus du seuil (debounce).
+  const consecutiveBadPolls = isPollBad
+    ? state.consecutiveBadPolls + 1
+    : 0
 
   let health = state.health
   let reason = state.reason
   let cleanSince = state.cleanSince
 
+  // Période de grâce : pendant les premières secondes après l'attache,
+  // on ne déclenche rien (le jitter buffer se cale).
+  if (sinceStart < GRACE_PERIOD_MS) {
+    return {
+      health: 'good',
+      reason: null,
+      prev: inbound,
+      lastBytesIncreaseAt,
+      cleanSince: null,
+      consecutiveBadPolls: 0,
+      startedAt: state.startedAt
+    }
+  }
+
   if (stalledMs > NO_PACKETS_MS) {
     health = 'lost'
     reason = 'no-packets'
     cleanSince = null
-  } else if (concealRate > POOR_CONCEAL_RATE) {
+  } else if (consecutiveBadPolls >= CONSECUTIVE_BAD_POLLS) {
     health = 'poor'
     reason = 'conceal'
     cleanSince = null
   } else if (health !== 'good') {
-    // Possibly recovering
+    // En cours de récupération
     if (concealRate < RECOVER_CONCEAL_RATE && stalledMs < 500) {
       if (cleanSince === null) cleanSince = now
       if (now - cleanSince >= RECOVER_MS) {
@@ -110,7 +145,9 @@ export function nextHealthState(state, inbound, now) {
     reason,
     prev: inbound,
     lastBytesIncreaseAt,
-    cleanSince
+    cleanSince,
+    consecutiveBadPolls,
+    startedAt: state.startedAt
   }
 }
 
@@ -123,6 +160,8 @@ export function initialHealthState(now = Date.now()) {
     reason: null,
     prev: null,
     lastBytesIncreaseAt: now,
-    cleanSince: null
+    cleanSince: null,
+    consecutiveBadPolls: 0,
+    startedAt: now
   }
 }

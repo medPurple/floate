@@ -31,6 +31,7 @@ import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
 import FlRoomNameDialog from '../components/molecules/FlRoomNameDialog.vue'
 import FlStage from '../components/molecules/FlStage.vue'
 import FlVolumePanel from '../components/molecules/FlVolumePanel.vue'
+import FlSiteFooter from '../components/organisms/FlSiteFooter.vue'
 
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
@@ -436,63 +437,66 @@ const isDev = import.meta.env?.DEV ?? false
 
 <template>
   <div class="room">
-    <!-- Bandeau debug : visible uniquement en npm run dev -->
-    <aside v-if="isDev" class="dev-bar" aria-label="Bandeau de développement">
-      <span class="dev-tag">DEV</span>
-      <span>peerId : <strong>{{ peerId.slice(0, 8) }}</strong></span>
-      <span>pseudo : <strong>{{ storedPseudo }}</strong></span>
-      <span>rôle : <strong>{{ roomConn.role.value }}</strong></span>
-      <span>signaling : <strong>{{ roomConn.status.value }}</strong></span>
-      <span>hostId : <strong>{{ roomConn.hostId.value?.slice(0, 8) || '—' }}</strong></span>
-      <span class="dev-info">code : {{ code }}</span>
-    </aside>
+    <!-- room-shell réserve au moins 100vh pour pousser le footer sous
+         la ligne de flottaison (FOOTER-MONETISATION.md §2). -->
+    <div class="room-shell">
+      <!-- Bandeau debug : visible uniquement en npm run dev -->
+      <aside v-if="isDev" class="dev-bar" aria-label="Bandeau de développement">
+        <span class="dev-tag">DEV</span>
+        <span>peerId : <strong>{{ peerId.slice(0, 8) }}</strong></span>
+        <span>pseudo : <strong>{{ storedPseudo }}</strong></span>
+        <span>rôle : <strong>{{ roomConn.role.value }}</strong></span>
+        <span>signaling : <strong>{{ roomConn.status.value }}</strong></span>
+        <span>hostId : <strong>{{ roomConn.hostId.value?.slice(0, 8) || '—' }}</strong></span>
+        <span class="dev-info">code : {{ code }}</span>
+      </aside>
 
-    <FlRoomHeader
-      :room-name="roomName"
-      :tag="roomConn.roomTag.value"
-      :visibility="visibility"
-      :can-edit="roomConn.role.value === 'host'"
-      @leave="leave"
-      @edit-name="openRenameDialog"
-    />
+      <FlRoomHeader
+        :room-name="roomName"
+        :tag="roomConn.roomTag.value"
+        :visibility="visibility"
+        :can-edit="roomConn.role.value === 'host'"
+        @leave="leave"
+        @edit-name="openRenameDialog"
+      />
 
-    <div class="room-body">
-      <FlStage
-        class="room-stage"
-        :state="stageState"
-        :role="roomConn.role.value"
-        :pseudo="storedPseudo"
-        :host-name="roomConn.host.value?.pseudo"
-        :is-streaming="isStreaming"
-        :listener-count="roomConn.listenerCount.value"
-        :floor-state="floorState"
-        :floor-countdown="floorCountdown"
-        :bars="bars"
-        :stream-health="streamHealth.health.value"
-        @start="onStart"
-        @stop="onStop"
-        @request-floor="onRequestFloor"
-      >
-        <!-- Overlay dédicaces. Toujours fourni (le composant gère sa
+      <div class="room-body">
+        <FlStage
+          class="room-stage"
+          :state="stageState"
+          :role="roomConn.role.value"
+          :pseudo="storedPseudo"
+          :host-name="roomConn.host.value?.pseudo"
+          :is-streaming="isStreaming"
+          :listener-count="roomConn.listenerCount.value"
+          :floor-state="floorState"
+          :floor-countdown="floorCountdown"
+          :bars="bars"
+          :stream-health="streamHealth.health.value"
+          @start="onStart"
+          @stop="onStop"
+          @request-floor="onRequestFloor"
+        >
+          <!-- Overlay dédicaces. Toujours fourni (le composant gère sa
              propre visibilité via items vide). -->
-        <template #dedications>
-          <FlDedications :items="chat.floating.value" />
-        </template>
+          <template #dedications>
+            <FlDedications :items="chat.floating.value" />
+          </template>
 
-        <!-- Pill composer + bouton historique. Le slot est toujours
+          <!-- Pill composer + bouton historique. Le slot est toujours
              fourni ; FlStage le n'enveloppe que si isStreaming=true. -->
-        <template #chat-bar>
-          <FlChatBar
-            :history-count="chat.historyCount.value"
-            :can-send="chat.canSend.value"
-            @submit="onChatSubmit"
-            @open-history="isHistoryOpen = true"
-          />
-        </template>
-      </FlStage>
+          <template #chat-bar>
+            <FlChatBar
+              :history-count="chat.historyCount.value"
+              :can-send="chat.canSend.value"
+              @submit="onChatSubmit"
+              @open-history="isHistoryOpen = true"
+            />
+          </template>
+        </FlStage>
 
-      <aside class="room-sidebar" aria-label="Panneaux de la room">
-        <!-- Ordre §4.5 (+ palette host) :
+        <aside class="room-sidebar" aria-label="Panneaux de la room">
+          <!-- Ordre §4.5 (+ palette host) :
              1. Code (si privée)
              2. Sortie audio
              3. Lien du son
@@ -501,70 +505,76 @@ const isDev = import.meta.env?.DEV ?? false
              6. Demandes de main (host + pending > 0)
              7. Participants
         -->
-        <FlInvitePanel v-if="visibility === 'private'" :code="code" />
+          <FlInvitePanel v-if="visibility === 'private'" :code="code" />
 
-        <FlAudioOutputPanel @change="onAudioOutputChange" />
+          <FlAudioOutputPanel @change="onAudioOutputChange" />
 
-        <section class="panel fl-shared-link">
-          <h3 class="panel-title">Lien du son</h3>
-          <template v-if="roomConn.role.value === 'host'">
-            <FlInput
-              v-model="hostSharedLinkDraft"
-              label="URL du son"
-              type="url"
-              placeholder="https://..."
-              hint="Optionnel : partage le lien de l'onglet diffusé."
-            />
-            <div class="fl-shared-link-actions">
-              <FlButton variant="secondary" @click="saveHostSharedLink">
-                Mettre à jour
-              </FlButton>
-            </div>
-          </template>
-          <template v-else>
-            <a
-              v-if="roomConn.hostSharedLink.value"
-              class="fl-shared-link-anchor"
-              :href="roomConn.hostSharedLink.value"
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Ouvrir le lien du son (nouvel onglet)"
-            >
-              {{ roomConn.hostSharedLink.value }} <span class="fl-shared-link-note">(nouvel onglet)</span>
-            </a>
-            <p v-else class="fl-shared-link-empty">
-              Le host n'a pas encore partagé de lien.
-            </p>
-          </template>
-        </section>
+          <section class="panel fl-shared-link">
+            <h3 class="panel-title">Lien du son</h3>
+            <template v-if="roomConn.role.value === 'host'">
+              <FlInput
+                v-model="hostSharedLinkDraft"
+                label="URL du son"
+                type="url"
+                placeholder="https://..."
+                hint="Optionnel : partage le lien de l'onglet diffusé."
+              />
+              <div class="fl-shared-link-actions">
+                <FlButton variant="secondary" @click="saveHostSharedLink">
+                  Mettre à jour
+                </FlButton>
+              </div>
+            </template>
+            <template v-else>
+              <a
+                v-if="roomConn.hostSharedLink.value"
+                class="fl-shared-link-anchor"
+                :href="roomConn.hostSharedLink.value"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Ouvrir le lien du son (nouvel onglet)"
+              >
+                {{ roomConn.hostSharedLink.value }} <span class="fl-shared-link-note">(nouvel onglet)</span>
+              </a>
+              <p v-else class="fl-shared-link-empty">
+                Le host n'a pas encore partagé de lien.
+              </p>
+            </template>
+          </section>
 
-        <FlVolumePanel
-          :disabled="roomConn.role.value === 'host'"
-          :disabled-hint="roomConn.role.value === 'host' ? 'Sans effet pendant que tu diffuses.' : ''"
-          @change="onVolumeChange"
-        />
+          <FlVolumePanel
+            :disabled="roomConn.role.value === 'host'"
+            :disabled-hint="roomConn.role.value === 'host' ? 'Sans effet pendant que tu diffuses.' : ''"
+            @change="onVolumeChange"
+          />
 
-        <FlPalettePanel
-          v-if="roomConn.role.value === 'host'"
-          :palettes="PALETTES"
-          :selected-id="roomConn.palette.value"
-          @change="onPaletteChange"
-        />
+          <FlPalettePanel
+            v-if="roomConn.role.value === 'host'"
+            :palettes="PALETTES"
+            :selected-id="roomConn.palette.value"
+            @change="onPaletteChange"
+          />
 
-        <FlFloorRequestsPanel
-          v-if="roomConn.role.value === 'host' && floorRequests.length"
-          :requests="floorRequests"
-          @accept="acceptRequest"
-          @deny="denyRequest"
-        />
+          <FlFloorRequestsPanel
+            v-if="roomConn.role.value === 'host' && floorRequests.length"
+            :requests="floorRequests"
+            @accept="acceptRequest"
+            @deny="denyRequest"
+          />
 
-        <FlParticipantsPanel
-          :participants="roomConn.peers.value"
-          :host-id="roomConn.hostId.value"
-          :me-id="peerId"
-        />
-      </aside>
-    </div>
+          <FlParticipantsPanel
+            :participants="roomConn.peers.value"
+            :host-id="roomConn.hostId.value"
+            :me-id="peerId"
+          />
+        </aside>
+      </div>
+    </div><!-- /.room-shell -->
+
+    <!-- Footer non-invasif (FOOTER-MONETISATION.md). Le cadre de la pub
+         utilise color-mix sur --accent, donc il suit automatiquement la
+         palette de la room (changée via FlPalettePanel par le host). -->
+    <FlSiteFooter />
 
     <!-- Élément audio caché — joue le stream du host pour les listeners -->
     <audio ref="audioEl" autoplay playsinline />
@@ -591,6 +601,13 @@ const isDev = import.meta.env?.DEV ?? false
 
 <style scoped>
 .room {
+  display: flex;
+  flex-direction: column;
+}
+
+/* room-shell isole le contenu applicatif avec min-height: 100vh, ce qui
+   pousse FlSiteFooter (sibling après) sous la ligne de flottaison. */
+.room-shell {
   min-height: 100vh;
   display: flex;
   flex-direction: column;

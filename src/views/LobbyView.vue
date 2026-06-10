@@ -15,6 +15,7 @@ import FlButton from '../components/atoms/FlButton.vue'
 import FlInput from '../components/atoms/FlInput.vue'
 import FlThemeToggle from '../components/atoms/FlThemeToggle.vue'
 import FlToggle from '../components/atoms/FlToggle.vue'
+import FlSiteFooter from '../components/organisms/FlSiteFooter.vue'
 import { useToasts } from '../composables/useToasts.js'
 import { useSession } from '../composables/useSession.js'
 import { newCode, normalizeCode } from '../lib/code.js'
@@ -155,162 +156,178 @@ watch(helpOpen, (open) => {
 </script>
 
 <template>
-  <main class="lobby">
-    <header class="lobby-top">
-      <span class="brand">floate</span>
-      <div class="lobby-meta">
-        <span id="lobby-help-trigger-desc" class="sr-only">
-          Ouvre la fenêtre d’aide sur le fonctionnement de floate.
-        </span>
-        <button
-          type="button"
-          class="lobby-help-link"
-          aria-describedby="lobby-help-trigger-desc"
-          @click="openHelp"
-        >
-          Comment ça marche ?
-        </button>
-        <FlThemeToggle />
-        <span class="version">v0.1</span>
-      </div>
-    </header>
-
-    <transition name="fl-fade">
-      <section
-        v-if="helpOpen"
-        class="lobby-help-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="lobby-help-title"
-        @click.self="closeHelp"
-      >
-        <article class="card lobby-help-card">
-          <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
-          <ol class="lobby-help-steps">
-            <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
-            <li>Le host démarre la diffusion depuis son onglet navigateur.</li>
-            <li>Les invités écoutent en direct, sans rien installer.</li>
-          </ol>
-          <p class="lobby-help-note">
-            Pour diffuser l'audio d'un onglet, utilise Chrome ou Edge et coche « Partager l'audio de l'onglet ».
-          </p>
-          <div class="lobby-help-actions">
-            <FlButton variant="secondary" @click="closeHelp">J’ai compris</FlButton>
-          </div>
-        </article>
-      </section>
-    </transition>
-
-    <section class="hero">
-      <svg class="hero-mark" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-        <defs>
-          <linearGradient id="floate-hero" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stop-color="var(--accent)" />
-            <stop offset="100%" stop-color="var(--accent-strong)" />
-          </linearGradient>
-        </defs>
-        <g stroke="url(#floate-hero)" stroke-width="2" stroke-linecap="round" fill="none">
-          <path d="M 10 40 Q 30 10, 50 40 T 90 40 T 130 40 T 170 40" opacity="0.9" />
-          <path d="M 10 40 Q 30 60, 50 40 T 90 40 T 130 40 T 170 40" opacity="0.5" />
-        </g>
-      </svg>
-      <h1 class="hero-title">Le son d'un onglet, à plusieurs, en direct.</h1>
-      <p class="hero-lead">
-        Diffuse depuis ton navigateur. Tes invités écoutent en direct,
-        sans installer quoi que ce soit.
-      </p>
-    </section>
-
-    <section class="card lobby-card" aria-labelledby="lobby-form-title">
-      <h2 id="lobby-form-title" class="sr-only">Rejoindre une room</h2>
-
-      <div class="form-grid">
-        <FlInput
-          v-model="pseudo"
-          label="Ton pseudo"
-          placeholder="Léa"
-          autofocus
-        />
-        <FlInput
-          v-model="code"
-          label="Code d'invitation"
-          placeholder="AKZ-394"
-          variant="mono"
-        />
-        <FlButton :variant="joinVariant" @click="joinRoom">
-          Rejoindre la room
-        </FlButton>
-      </div>
-
-      <div v-if="!creating" class="lobby-divider">
-        <button type="button" class="lobby-create-link" @click="openCreate">
-          Pas de code ? Crée ta room
-          <span aria-hidden="true">→</span>
-        </button>
-      </div>
-
-      <transition name="fl-collapse">
-        <div v-if="creating" class="create-panel">
-          <h3 class="panel-title">Nouvelle room</h3>
-          <div class="form-grid">
-            <FlInput
-              v-model="roomName"
-              label="Nom de la room"
-              placeholder="Set du dimanche"
-            />
-            <div class="form-field">
-              <span class="form-field-label">Visibilité</span>
-              <FlToggle
-                v-model="visibility"
-                :options="visibilityOptions"
-                aria-label="Visibilité de la room"
-              />
-              <p class="form-field-hint">
-                {{ visibility === 'private'
-                  ? 'Seules les personnes avec le code peuvent rejoindre.'
-                  : 'La room apparaît dans la liste publique.' }}
-              </p>
-            </div>
-            <div class="create-actions">
-              <FlButton variant="ghost" @click="cancelCreate">Annuler</FlButton>
-              <FlButton variant="primary" @click="createRoom">Créer la room</FlButton>
-            </div>
-          </div>
-        </div>
-      </transition>
-    </section>
-
-    <section v-if="publicRooms.length || !publicRoomsLoading" class="public-rooms">
-      <h3 class="panel-title">
-        Rooms publiques en ce moment ({{ publicRooms.length }})
-      </h3>
-      <ul v-if="publicRooms.length" class="rooms-list">
-        <li v-for="room in publicRooms" :key="room.code">
-          <button class="room-item" type="button" @click="joinPublic(room)">
-            <span class="room-title">
-              <span class="room-name">{{ room.name }}</span>
-              <span
-                v-if="getTag(room.tag)"
-                class="room-tag"
-                :style="{ color: getTag(room.tag).color }"
-              >
-                {{ getTag(room.tag).label }}
-              </span>
-            </span>
-            <span class="room-meta">{{ room.participants }} part.</span>
-            <span class="room-arrow" aria-hidden="true">→</span>
+  <div class="lobby-page">
+    <main class="lobby">
+      <header class="lobby-top">
+        <span class="brand">floate</span>
+        <div class="lobby-meta">
+          <span id="lobby-help-trigger-desc" class="sr-only">
+            Ouvre la fenêtre d’aide sur le fonctionnement de floate.
+          </span>
+          <button
+            type="button"
+            class="lobby-help-link"
+            aria-describedby="lobby-help-trigger-desc"
+            @click="openHelp"
+          >
+            Comment ça marche ?
           </button>
-        </li>
-      </ul>
-      <p v-else class="rooms-empty">
-        Aucune room publique pour l'instant. Crée la première.
-      </p>
-    </section>
-  </main>
+          <FlThemeToggle />
+          <span class="version">v0.5</span>
+        </div>
+      </header>
+
+      <transition name="fl-fade">
+        <section
+          v-if="helpOpen"
+          class="lobby-help-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="lobby-help-title"
+          @click.self="closeHelp"
+        >
+          <article class="card lobby-help-card">
+            <h2 id="lobby-help-title">Comment fonctionne floate ?</h2>
+            <ol class="lobby-help-steps">
+              <li>Choisis un pseudo puis crée une room, ou rejoins-en une avec un code.</li>
+              <li>Le host démarre la diffusion depuis son onglet navigateur.</li>
+              <li>Les invités écoutent en direct, sans rien installer.</li>
+            </ol>
+            <p class="lobby-help-note">
+              Pour diffuser l'audio d'un onglet, utilise Chrome ou Edge et coche « Partager l'audio de l'onglet ».
+            </p>
+            <div class="lobby-help-actions">
+              <FlButton variant="secondary" @click="closeHelp">J’ai compris</FlButton>
+            </div>
+          </article>
+        </section>
+      </transition>
+
+      <section class="hero">
+        <svg class="hero-mark" viewBox="0 0 180 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="floate-hero" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="var(--accent)" />
+              <stop offset="100%" stop-color="var(--accent-strong)" />
+            </linearGradient>
+          </defs>
+          <g stroke="url(#floate-hero)" stroke-width="2" stroke-linecap="round" fill="none">
+            <path d="M 10 40 Q 30 10, 50 40 T 90 40 T 130 40 T 170 40" opacity="0.9" />
+            <path d="M 10 40 Q 30 60, 50 40 T 90 40 T 130 40 T 170 40" opacity="0.5" />
+          </g>
+        </svg>
+        <h1 class="hero-title">Le son d'un onglet, à plusieurs, en direct.</h1>
+        <p class="hero-lead">
+          Diffuse depuis ton navigateur. Tes invités écoutent en direct,
+          sans installer quoi que ce soit.
+        </p>
+      </section>
+
+      <section class="card lobby-card" aria-labelledby="lobby-form-title">
+        <h2 id="lobby-form-title" class="sr-only">Rejoindre une room</h2>
+
+        <div class="form-grid">
+          <FlInput
+            v-model="pseudo"
+            label="Ton pseudo"
+            placeholder="Léa"
+            autofocus
+          />
+          <FlInput
+            v-model="code"
+            label="Code d'invitation"
+            placeholder="AKZ-394"
+            variant="mono"
+          />
+          <FlButton :variant="joinVariant" @click="joinRoom">
+            Rejoindre la room
+          </FlButton>
+        </div>
+
+        <div v-if="!creating" class="lobby-divider">
+          <button type="button" class="lobby-create-link" @click="openCreate">
+            Pas de code ? Crée ta room
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+
+        <transition name="fl-collapse">
+          <div v-if="creating" class="create-panel">
+            <h3 class="panel-title">Nouvelle room</h3>
+            <div class="form-grid">
+              <FlInput
+                v-model="roomName"
+                label="Nom de la room"
+                placeholder="Set du dimanche"
+              />
+              <div class="form-field">
+                <span class="form-field-label">Visibilité</span>
+                <FlToggle
+                  v-model="visibility"
+                  :options="visibilityOptions"
+                  aria-label="Visibilité de la room"
+                />
+                <p class="form-field-hint">
+                  {{ visibility === 'private'
+                    ? 'Seules les personnes avec le code peuvent rejoindre.'
+                    : 'La room apparaît dans la liste publique.' }}
+                </p>
+              </div>
+              <div class="create-actions">
+                <FlButton variant="ghost" @click="cancelCreate">Annuler</FlButton>
+                <FlButton variant="primary" @click="createRoom">Créer la room</FlButton>
+              </div>
+            </div>
+          </div>
+        </transition>
+      </section>
+
+      <section v-if="publicRooms.length || !publicRoomsLoading" class="public-rooms">
+        <h3 class="panel-title">
+          Rooms publiques en ce moment ({{ publicRooms.length }})
+        </h3>
+        <ul v-if="publicRooms.length" class="rooms-list">
+          <li v-for="room in publicRooms" :key="room.code">
+            <button class="room-item" type="button" @click="joinPublic(room)">
+              <span class="room-title">
+                <span class="room-name">{{ room.name }}</span>
+                <span
+                  v-if="getTag(room.tag)"
+                  class="room-tag"
+                  :style="{ color: getTag(room.tag).color }"
+                >
+                  {{ getTag(room.tag).label }}
+                </span>
+              </span>
+              <span class="room-meta">{{ room.participants }} part.</span>
+              <span class="room-arrow" aria-hidden="true">→</span>
+            </button>
+          </li>
+        </ul>
+        <p v-else class="rooms-empty">
+          Aucune room publique pour l'instant. Crée la première.
+        </p>
+      </section>
+    </main>
+
+    <!-- Footer non-invasif : pub + don, sous la ligne de flottaison.
+         Cf. FOOTER-MONETISATION.md §2 - jamais sticky, jamais sonore. -->
+    <FlSiteFooter />
+  </div>
 </template>
 
 <style scoped>
+/* Conteneur de page : permet de poser le footer en dessous du lobby
+   sans qu'il vienne dans la grille restreinte 720px. */
+.lobby-page {
+  display: flex;
+  flex-direction: column;
+}
+
 .lobby {
+  /* min-height: 100vh garantit que le footer (FlSiteFooter, sibling)
+     est poussé sous la ligne de flottaison sur les écrans courts. */
+  min-height: 100vh;
   max-width: var(--max-width-lobby);
   margin: 0 auto;
   padding: var(--space-3xl) var(--space-xl);

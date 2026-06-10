@@ -445,6 +445,12 @@ export function useRoomConnection({
         data: { kind: 'host-shared-link', url: next }
       })
     }
+    // Tracking admin : on déclare la source d'écoute au serveur. Pas
+    // bloquant si le serveur l'ignore (versions anciennes). URL vide
+    // = on n'envoie rien — le serveur ne peut rien classifier.
+    if (next) {
+      signaling.send({ type: 'host-source-track', url: next })
+    }
     return { ok: true, url: next }
   }
 
@@ -457,7 +463,12 @@ export function useRoomConnection({
       peerId: peerId.value,
       pseudo,
       roomName: roomName.value,
-      visibility
+      visibility,
+      // Tracking admin : on transmet le referrer (source de trafic) et
+      // le hash d'entrée (utile pour distinguer "lien d'invitation"
+      // si le user atterrit direct sur /r/CODE). Pas d'identifiant.
+      referrer: typeof document !== 'undefined' ? (document.referrer || '') : '',
+      entryHash: typeof window   !== 'undefined' ? (window.location.hash || '') : ''
     })
   }
 

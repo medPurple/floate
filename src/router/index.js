@@ -6,6 +6,8 @@
  *
  *   /         → Lobby (entrée + création de room)
  *   /r/:code  → Room (écoute / diffusion)
+ *   /infos    → Page institutionnelle (confidentialité, conditions, mentions)
+ *   /contact  → Formulaire de contact (bug, idée, RGPD)
  */
 import { createRouter, createWebHashHistory } from 'vue-router'
 
@@ -28,6 +30,18 @@ const routes = [
     name: 'admin-stats',
     component: () => import('../views/AdminStatsView.vue'),
     meta: { title: 'Stats — floate admin' }
+  },
+  {
+    path: '/infos',
+    name: 'infos',
+    component: () => import('../views/InfosView.vue'),
+    meta: { title: 'Infos & conditions — floate' }
+  },
+  {
+    path: '/contact',
+    name: 'contact',
+    component: () => import('../views/ContactView.vue'),
+    meta: { title: 'Contact — floate' }
   },
   {
     // Fallback : tout chemin inconnu retombe sur le lobby.

@@ -58,30 +58,10 @@ const events = computed(() => stream?.events.value ?? [])
 // --- Range toggle (24h / 7j / 30j) -----------------------------------
 const range = ref('24h')
 
-// --- Sources (mockées pour l'instant : pas remontées par le serveur
-//     dans cette V0, on les exposera quand on aura un agrégateur) -----
-const listenSources = ref([
-  { name: 'YouTube',     value: 42 },
-  { name: 'Spotify Web', value: 26 },
-  { name: 'Bandcamp',    value: 12 },
-  { name: 'Autres',      value: 20 }
-])
-
-const trafficSources = ref([
-  { name: 'Direct',           value: 48 },
-  { name: "Lien d'invitation", value: 34 },
-  { name: 'Réseaux sociaux',  value: 12 },
-  { name: 'Autre',            value: 6 }
-])
-
-const geo = ref([
-  { code: 'FR', value: 58 },
-  { code: 'BE', value: 12 },
-  { code: 'CH', value: 9 },
-  { code: 'CA', value: 7 },
-  { code: 'US', value: 6 },
-  { code: 'Autres', value: 8 }
-])
+// --- Sources / trafic / géo (depuis le snapshot KPI serveur) ----------
+// Le serveur agrège ces compteurs dans server/data/stats.json. Tant
+// qu'aucune donnée n'est tombée, les tableaux peuvent être vides —
+// les composants BarsList affichent un état vide cohérent dans ce cas.
 
 // --- Format helpers --------------------------------------------------
 function fmtNumber(n) {
@@ -104,6 +84,12 @@ const roomsValue   = computed(() => fmtNumber(k.value?.activeRooms))
 const avgValue     = computed(() => fmtDuration(k.value?.avgListenSeconds))
 const visitsValue  = computed(() => fmtNumber(k.value?.visitsToday))
 const visitsByHour = computed(() => k.value?.visitsByHour || new Array(24).fill(0))
+
+// Panneaux Sources / Trafic / Géo : alimentés par le snapshot serveur.
+// Format harmonisé : [{ name, value }].
+const listenSources  = computed(() => k.value?.listenSources  || [])
+const trafficSources = computed(() => k.value?.trafficSources || [])
+const geo            = computed(() => k.value?.geo            || [])
 
 function leave() {
   router.push({ name: 'lobby' })
@@ -205,7 +191,7 @@ onUnmounted(() => stream?.disconnect())
 
       <article class="panel">
         <h3 class="panel-title">Géographie</h3>
-        <BarsList :items="geo.map(g => ({ name: g.code, value: g.value }))" />
+        <BarsList :items="geo" />
       </article>
     </section>
 

@@ -21,14 +21,16 @@ import { isTagId } from '../src/lib/tags.js'
 
 import {
   trackVisit, trackSessionClosed, trackEvent,
+  trackChatMessage, trackListenSource, trackTrafficSource, trackGeo,
   snapshot, topRooms, recentEvents, startedAt,
-  subscribe, unsubscribe, startKpiBroadcaster
+  subscribe, unsubscribe, startKpiBroadcaster,
+  loadFromDisk, flushNow, startAutoFlush, stopAutoFlush
 } from './stats.js'
 
 const PORT = Number(process.env.PORT) || 8787
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin'
 const MAX_PEERS_PER_ROOM = 8
-const VERSION = '0.2.0'
+const VERSION = '0.5.0'
 
 // Origines autorisées pour CORS et pour la vérif WS upgrade.
 // '*' en dev (défaut), liste séparée par virgules en prod :
@@ -225,11 +227,14 @@ function sendTo(code, peerId, msg) {
    Signaling handler
    ============================================================ */
 
-wssSignaling.on('connection', (ws) => {
+wssSignaling.on('connection', (ws, req) => {
   let myRoom = null
   let myId = null
 
   trackVisit()
+  // Géo : on lit la locale primaire de l'en-tête Accept-Language au
+  // moment de l'upgrade. Stopgap honnête (vraie geo IP en v0.6).
+  trackGeo(req?.headers?.['accept-language'])
 
   ws.on('message', (raw) => {
     let msg
@@ -262,6 +267,14 @@ wssSignaling.on('connection', (ws) => {
         }
         room._visibility = msg.visibility === 'public' ? 'public' : 'private'
       }
+
+      // Trafic : on classe l'origine de cette session (referrer + hash
+      // d'arrivée) pour la console admin. Pas bloquant si le client
+      // n'envoie rien — la classification renvoie 'Direct' par défaut.
+      trackTrafficSource({
+        referrer: msg.referrer,
+        hash: msg.entryHash
+      })
 
       ws.send(JSON.stringify({
         type: 'welcome',
@@ -333,8 +346,10 @@ wssSignaling.on('connection', (ws) => {
       }
     }
 
-    // -- Chat texte : relais pur, pas de stockage côté serveur.
-    //    L'historique vit côté front. Les late joiners ne le voient pas.
+    // -- Chat texte : relais pur, pas de stockage côté serveur dans
+    //    l'expérience utilisateur (l'historique vit côté front, les late
+    //    joiners ne le voient pas). En revanche, on garde une trace
+    //    append-only sur disque pour modération / audit post-mortem.
     else if (msg.type === 'chat-message') {
       if (!myRoom || !myId) return
       const room = rooms.get(myRoom)
@@ -342,14 +357,32 @@ wssSignaling.on('connection', (ws) => {
       const text = String(msg.text || '').trim().slice(0, 600)
       if (!text) return
       const me = room.get(myId)
+      const ts = Date.now()
       broadcast(myRoom, {
         type: 'chat-message',
         id: String(msg.id || randomUUID()),
         peerId: myId,
         pseudo: me.pseudo,
         text,
-        ts: Date.now()
+        ts
       }, myId)
+      trackChatMessage({
+        room: myRoom,
+        peerId: myId,
+        pseudo: me.pseudo,
+        text,
+        ts
+      })
+    }
+
+    // -- Tracking source d'écoute (URL de l'onglet diffusé). Le host
+    //    émet ça en parallèle du host-shared-link P2P pour qu'on puisse
+    //    le compter côté admin. Le serveur ne relaie pas, il agrège juste.
+    else if (msg.type === 'host-source-track') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room || hostOf(room) !== myId) return
+      trackListenSource(String(msg.url || ''))
     }
 
     // -- Host change le nom de la room. Persisté côté serveur pour
@@ -476,6 +509,11 @@ wssAdmin.on('connection', (ws) => {
   ws.on('error', () => unsubscribe(send))
 })
 
+// Charge les KPIs persistants du dernier run et lance le flush auto.
+// FLOATE_DATA_DIR peut surcharger le chemin par défaut (./data) en prod.
+loadFromDisk()
+startAutoFlush()
+
 const kpiTimer = startKpiBroadcaster(rooms, 2500)
 
 /* ============================================================
@@ -496,6 +534,8 @@ export const _internals = { rooms, buildHealth, checkAdmin, httpServer }
 // Cleanup propre
 function shutdown() {
   clearInterval(kpiTimer)
+  stopAutoFlush()
+  flushNow()
   httpServer.close(() => process.exit(0))
 }
 process.on('SIGTERM', shutdown)

@@ -1,7 +1,7 @@
 {
   "name": "floate-signaling",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.5.0",
   "type": "module",
   "description": "Serveur de signaling minimal pour floate — relais WebSocket entre peers (SDP, ICE, presence).",
   "main": "index.js",
