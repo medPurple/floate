@@ -56,9 +56,13 @@ let eventSeq = 0
 // Subscribers WS admin
 const subs = new Set()
 
-// Persistance : dirty bit + timer
+// Persistance : dirty bit + timer + flag de disponibilité du disque
 let dirty = false
 let flushTimer = null
+// Si DATA_DIR n'est pas inscriptible (cas typique : systemd avec
+// ProtectSystem=strict ou perms inadaptées), on bascule en mémoire pure.
+// Évite de spammer les logs à chaque event/flush.
+let persistenceEnabled = false
 
 // --- Utilitaires ---------------------------------------------------------
 
@@ -78,12 +82,29 @@ function maybeResetDailyCounters() {
   }
 }
 
-function ensureDataDirs() {
+/**
+ * Tente de créer les dossiers de persistance ET vérifie qu'on peut
+ * écrire dedans. Met persistenceEnabled à true si tout est OK.
+ * Appelé une fois au boot par loadFromDisk().
+ */
+function probeDataDirs() {
   try {
     fs.mkdirSync(DATA_DIR, { recursive: true })
     fs.mkdirSync(CHAT_DIR, { recursive: true })
+    // Test d'écriture : crée puis supprime un fichier témoin.
+    const probe = path.join(DATA_DIR, '.write-probe')
+    fs.writeFileSync(probe, 'ok')
+    fs.unlinkSync(probe)
+    persistenceEnabled = true
   } catch (err) {
-    console.warn('[stats] mkdir data dirs failed:', err.message)
+    persistenceEnabled = false
+    console.warn(
+      `[stats] persistance disque désactivée — DATA_DIR (${DATA_DIR}) ` +
+      `n'est pas inscriptible : ${err.message}\n` +
+      `[stats] les KPIs continuent en mémoire pure (perdus au redémarrage).\n` +
+      `[stats] pour activer : créer un dossier inscriptible et exporter ` +
+      `FLOATE_DATA_DIR=/chemin/inscriptible`
+    )
   }
 }
 
@@ -103,7 +124,8 @@ function mapToList(map, limit = 12) {
 // --- Persistance (lecture/écriture) -------------------------------------
 
 export function loadFromDisk() {
-  ensureDataDirs()
+  probeDataDirs()
+  if (!persistenceEnabled) return
   if (!fs.existsSync(STATS_FILE)) return
   try {
     const raw = fs.readFileSync(STATS_FILE, 'utf-8')
@@ -132,7 +154,7 @@ export function loadFromDisk() {
 
 export function flushNow() {
   if (!dirty) return
-  ensureDataDirs()
+  if (!persistenceEnabled) { dirty = false; return }
   try {
     const payload = JSON.stringify({
       version: 1,
@@ -142,7 +164,11 @@ export function flushNow() {
     fs.writeFileSync(STATS_FILE, payload, 'utf-8')
     dirty = false
   } catch (err) {
-    console.warn('[stats] flush failed:', err.message)
+    // Disque devenu indisponible en cours de run (cas rare). On bascule
+    // en mémoire pure et on n'essaiera plus jusqu'au prochain reboot.
+    persistenceEnabled = false
+    dirty = false
+    console.warn('[stats] flush failed, persistance désactivée :', err.message)
   }
 }
 
@@ -191,10 +217,10 @@ export function trackEvent(kind, who, room) {
   events.unshift(ev)
   if (events.length > EVENT_BUFFER_SIZE) events.pop()
 
-  // Append au log persistant. Async, on ignore les erreurs (pas critique).
-  fs.appendFile(EVENTS_LOG, JSON.stringify(ev) + '\n', (err) => {
-    if (err) console.warn('[stats] events.log append failed:', err.message)
-  })
+  // Append au log persistant. Skip silencieux si la persistance est off.
+  if (persistenceEnabled) {
+    fs.appendFile(EVENTS_LOG, JSON.stringify(ev) + '\n', () => { /* swallow */ })
+  }
 
   fanout({ type: 'event', event: ev })
 }
@@ -206,12 +232,10 @@ export function trackEvent(kind, who, room) {
  */
 export function trackChatMessage({ room, peerId, pseudo, text, ts }) {
   if (!room) return
-  ensureDataDirs()
+  if (!persistenceEnabled) return
   const file = path.join(CHAT_DIR, `${sanitizeCode(room)}.log`)
   const line = JSON.stringify({ peerId, pseudo, text, ts }) + '\n'
-  fs.appendFile(file, line, (err) => {
-    if (err) console.warn('[stats] chat log append failed:', err.message)
-  })
+  fs.appendFile(file, line, () => { /* swallow */ })
 }
 
 function sanitizeCode(code) {

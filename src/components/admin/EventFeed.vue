@@ -75,6 +75,16 @@ function relativeTime(ts) {
 .feed-dot.is-leave  { background: var(--text-faint); }
 .feed-dot.is-live   { background: var(--live); }
 
+/* inline-flex + gap pour garantir l'espacement entre pseudo, verbe et
+   nom de room. Sans ça, Vue compresse les whitespace entre balises et
+   tout finit collé ("wila crééfunky set"). */
+.feed-text {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+  min-width: 0;
+}
 .feed-text strong { color: var(--text); font-weight: 600; }
 .feed-text .verb { color: var(--text-dim); }
 .feed-text .room { color: var(--text); }
