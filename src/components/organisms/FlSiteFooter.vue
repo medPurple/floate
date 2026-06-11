@@ -193,12 +193,15 @@ function onCoffee() {
     gap: var(--space-lg);
   }
   .footer-slot {
-    justify-content: center;
+    justify-content: stretch;
   }
+  /* Cadre fluide : remplit la largeur disponible du conteneur. Le
+     slot interne tient son ratio via aspect-ratio (cf. FlAdSlot). */
   .fl-frame {
     display: block;
-    max-width: 360px;
-    margin: 0 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
   }
 }
 </style>

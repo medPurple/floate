@@ -30,6 +30,7 @@ import { useSession } from './useSession.js'
 import { useSignaling } from './useSignaling.js'
 import { ICE_SERVERS } from '../lib/config.js'
 import { DEFAULT_PALETTE_ID } from '../lib/palettes.js'
+import { DEFAULT_PLAYER_ID, isPlayerId } from '../lib/players.js'
 
 // Booster Opus pour la musique : 256kbps maxBitrate, stereo on via SDP.
 const OPUS_MAX_BITRATE = 256_000
@@ -68,7 +69,7 @@ export function useRoomConnection({
   code, pseudo, roomName: initialRoomName = null, visibility = null,
   onFloorRequest, onRemoteStream,
   onChatMessage, onProposalCreated, onProposalVote,
-  onRoomNameChanged, onRoomTagChanged
+  onRoomNameChanged, onRoomTagChanged, onPlayerStyleChanged
 }) {
   const { peerId } = useSession()
 
@@ -83,6 +84,8 @@ export function useRoomConnection({
   const roomName = ref(initialRoomName || null)
   // Tag de genre (id) — autorité = serveur. null = aucun tag.
   const roomTag = ref(null)
+  // Style de lecteur (vinyl / cd / digital) — autorité serveur.
+  const playerStyle = ref(DEFAULT_PLAYER_ID)
 
   const me = computed(() => peers.value.find(p => p.id === peerId.value) || null)
   const host = computed(() => peers.value.find(p => p.id === hostId.value) || null)
@@ -229,6 +232,8 @@ export function useRoomConnection({
       }
       // roomTag peut être string (id) ou null (aucun)
       roomTag.value = typeof msg.roomTag === 'string' ? msg.roomTag : null
+      // playerStyle : fallback DEFAULT si rien envoyé (compat anciens serveurs)
+      playerStyle.value = isPlayerId(msg.playerStyle) ? msg.playerStyle : DEFAULT_PLAYER_ID
       status.value = 'connected'
       // J'initie une RTCPeerConnection vers chaque peer déjà présent.
       for (const p of peers.value) {
@@ -276,6 +281,12 @@ export function useRoomConnection({
       const next = typeof msg.tag === 'string' ? msg.tag : null
       roomTag.value = next
       onRoomTagChanged?.(next)
+    },
+
+    'player-style-changed'(msg) {
+      if (!isPlayerId(msg.style)) return
+      playerStyle.value = msg.style
+      onPlayerStyleChanged?.(msg.style)
     },
 
     'chat-message'(msg) {
@@ -394,6 +405,18 @@ export function useRoomConnection({
   }
 
   /**
+   * Host change le style de lecteur (vinyl / cd / digital). Le serveur
+   * valide via isPlayerId() avant de persister + broadcast.
+   */
+  function setPlayerStyle(id) {
+    if (role.value !== 'host') return { ok: false, reason: 'not-host' }
+    if (!isPlayerId(id)) return { ok: false, reason: 'invalid' }
+    if (id === playerStyle.value) return { ok: true, unchanged: true }
+    signaling.send({ type: 'player-style-change', style: id })
+    return { ok: true }
+  }
+
+  /**
    * Host change le tag de genre. Passer null pour retirer le tag.
    * Le serveur valide via isTagId() avant de persister + broadcast.
    */
@@ -496,14 +519,14 @@ export function useRoomConnection({
   return {
     // State
     peers, hostId, status, lastError,
-    palette, roomName, roomTag,
+    palette, roomName, roomTag, playerStyle,
     me, host, role, listenerCount,
     hostSharedLink,
     localStream,
     // Actions
     attachStream, detachStream,
     requestFloor, changeHost, changePalette, setHostSharedLink,
-    setRoomName, setRoomTag,
+    setRoomName, setRoomTag, setPlayerStyle,
     sendChatMessage, sendProposal, sendProposalVote,
     getPeerStats
   }

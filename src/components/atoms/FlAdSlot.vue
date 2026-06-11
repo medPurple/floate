@@ -103,11 +103,15 @@ const dimsLabel = computed(() => {
   height: 250px;
 }
 
-/* Mobile : le panel passe en pleine largeur. */
+/* Mobile : le panel prend toute la largeur de son conteneur, ratio
+   conservé via aspect-ratio (sinon 168px de haut sur un slot très
+   large paraît tassé). */
 @media (max-width: 760px) {
   .fl-slot-panel {
     width: 100%;
-    max-width: 360px;
+    max-width: none;
+    height: auto;
+    aspect-ratio: 300 / 168;
   }
 }
 </style>

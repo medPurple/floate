@@ -27,6 +27,7 @@ import FlFloorRequestsPanel from '../components/molecules/FlFloorRequestsPanel.v
 import FlInvitePanel from '../components/molecules/FlInvitePanel.vue'
 import FlPalettePanel from '../components/molecules/FlPalettePanel.vue'
 import FlParticipantsPanel from '../components/molecules/FlParticipantsPanel.vue'
+import FlPlayerStylePanel from '../components/molecules/FlPlayerStylePanel.vue'
 import FlRoomHeader from '../components/molecules/FlRoomHeader.vue'
 import FlRoomNameDialog from '../components/molecules/FlRoomNameDialog.vue'
 import FlStage from '../components/molecules/FlStage.vue'
@@ -41,6 +42,7 @@ import { useDisplayCapture } from '../composables/useDisplayCapture.js'
 import { useChat } from '../composables/useChat.js'
 import { useStreamHealth } from '../composables/useStreamHealth.js'
 import { PALETTES } from '../lib/palettes.js'
+import { PLAYERS } from '../lib/players.js'
 
 const props = defineProps({
   code: { type: String, required: true }
@@ -104,7 +106,8 @@ const roomConn = useRoomConnection({
   onProposalCreated: (msg) => chatBridge.ingestProposal(msg),
   onProposalVote: (msg) => chatBridge.ingestVote(msg),
   onRoomNameChanged: (name) => push({ kind: 'info', message: `Room renommée : ${name}` }),
-  onRoomTagChanged: () => { /* le header reflète automatiquement via roomTag */ }
+  onRoomTagChanged: () => { /* le header reflète automatiquement via roomTag */ },
+  onPlayerStyleChanged: () => { /* la sidebar reflète automatiquement via playerStyle */ }
 })
 
 // Nom de la room — source de vérité = roomConn.roomName (qui vient
@@ -334,6 +337,16 @@ function onPaletteChange(id) {
   roomConn.changePalette(id)
 }
 
+function onPlayerStyleChange(id) {
+  // Le placeholder vit en sidebar : on persiste juste, FlStage n'est pas
+  // encore branché là-dessus (FlVisualizer continue à faire le job tant
+  // que les SVG d'illustration ne sont pas dispo).
+  const result = roomConn.setPlayerStyle(id)
+  if (!result.ok && result.reason === 'invalid') {
+    push({ kind: 'error', message: 'Style de lecteur inconnu.' })
+  }
+}
+
 // --- Audio playback côté listener + setSinkId --------------------------
 const audioEl = ref(null)
 
@@ -553,6 +566,13 @@ const isDev = import.meta.env?.DEV ?? false
             :palettes="PALETTES"
             :selected-id="roomConn.palette.value"
             @change="onPaletteChange"
+          />
+
+          <FlPlayerStylePanel
+            v-if="roomConn.role.value === 'host'"
+            :players="PLAYERS"
+            :selected-id="roomConn.playerStyle.value"
+            @change="onPlayerStyleChange"
           />
 
           <FlFloorRequestsPanel

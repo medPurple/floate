@@ -18,6 +18,7 @@ import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
 import { DEFAULT_PALETTE_ID, isPaletteId } from '../src/lib/palettes.js'
 import { isTagId } from '../src/lib/tags.js'
+import { DEFAULT_PLAYER_ID, isPlayerId } from '../src/lib/players.js'
 
 import {
   trackVisit, trackSessionClosed, trackEvent,
@@ -188,6 +189,7 @@ function getRoom(code) {
     room._name = null
     room._palette = DEFAULT_PALETTE_ID
     room._tag = null
+    room._playerStyle = DEFAULT_PLAYER_ID
     rooms.set(code, room)
   }
   return rooms.get(code)
@@ -283,7 +285,8 @@ wssSignaling.on('connection', (ws, req) => {
         hostId: hostOf(room),
         roomName: room._name,
         roomTag: room._tag || null,
-        palette: room._palette || DEFAULT_PALETTE_ID
+        palette: room._palette || DEFAULT_PALETTE_ID,
+        playerStyle: room._playerStyle || DEFAULT_PLAYER_ID
       }))
 
       const me = room.get(myId)
@@ -397,6 +400,20 @@ wssSignaling.on('connection', (ws, req) => {
       if (room._name === next) return
       room._name = next
       broadcast(myRoom, { type: 'room-name-changed', name: next })
+    }
+
+    // -- Host change le style de lecteur affiché sur le stage
+    //    (vinyl / cd / digital). Validation via isPlayerId, broadcast à tous.
+    else if (msg.type === 'player-style-change') {
+      if (!myRoom || !myId) return
+      const room = rooms.get(myRoom)
+      if (!room) return
+      if (hostOf(room) !== myId) return
+      const next = String(msg.style || '')
+      if (!isPlayerId(next)) return
+      if (room._playerStyle === next) return
+      room._playerStyle = next
+      broadcast(myRoom, { type: 'player-style-changed', style: next })
     }
 
     // -- Host change le tag de genre de la room. tag === null retire le tag.

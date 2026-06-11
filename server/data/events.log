@@ -43,3 +43,18 @@
 {"id":13,"kind":"join","who":"Listener","room":"RFRSH1","ts":1781087250}
 {"id":14,"kind":"leave","who":"Listener","room":"RFRSH1","ts":1781087251}
 {"id":15,"kind":"leave","who":"Host","room":"RFRSH1","ts":1781087251}
+{"id":1,"kind":"create","who":"Host","room":"PAL1781100198034A","ts":1781100198}
+{"id":2,"kind":"join","who":"Listener","room":"PAL1781100198034A","ts":1781100198}
+{"id":3,"kind":"leave","who":"Host","room":"PAL1781100198034A","ts":1781100198}
+{"id":4,"kind":"leave","who":"Listener","room":"PAL1781100198034A","ts":1781100198}
+{"id":5,"kind":"create","who":"Host","room":"PAL1781100198040B","ts":1781100198}
+{"id":6,"kind":"join","who":"Listener","room":"PAL1781100198040B","ts":1781100198}
+{"id":7,"kind":"join","who":"Late listener","room":"PAL1781100198040B","ts":1781100198}
+{"id":8,"kind":"leave","who":"Host","room":"PAL1781100198040B","ts":1781100198}
+{"id":9,"kind":"leave","who":"Listener","room":"PAL1781100198040B","ts":1781100198}
+{"id":10,"kind":"leave","who":"Late listener","room":"PAL1781100198040B","ts":1781100198}
+{"id":11,"kind":"create","who":"Host","room":"RFRSH1","ts":1781100198}
+{"id":12,"kind":"join","who":"Listener","room":"RFRSH1","ts":1781100198}
+{"id":13,"kind":"join","who":"Listener","room":"RFRSH1","ts":1781100198}
+{"id":14,"kind":"leave","who":"Listener","room":"RFRSH1","ts":1781100198}
+{"id":15,"kind":"leave","who":"Host","room":"RFRSH1","ts":1781100198}
