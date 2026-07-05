@@ -14,8 +14,12 @@
  *  - 'NotAllowedError' : l'utilisateur a refusé le partage.
  *  - 'NotSupportedError' : navigateur non compatible (Safari, Firefox
  *    desktop ne supporte pas audio dans getDisplayMedia).
+ *  - 'browser-unsupported' : Firefox/Safari détectés en amont, avant
+ *    même d'ouvrir le picker (voir lib/browserSupport.js) — leur
+ *    implémentation de getDisplayMedia ignore toujours l'audio.
  */
 import { ref, onBeforeUnmount } from 'vue'
+import { supportsTabAudioCapture, detectBrowser } from '../lib/browserSupport.js'
 
 export function useDisplayCapture() {
   const stream = ref(null)
@@ -28,6 +32,13 @@ export function useDisplayCapture() {
     if (!navigator.mediaDevices?.getDisplayMedia) {
       const err = new Error('not-supported')
       err.code = 'not-supported'
+      error.value = err
+      throw err
+    }
+    if (!supportsTabAudioCapture()) {
+      const err = new Error('browser-unsupported')
+      err.code = 'browser-unsupported'
+      err.browser = detectBrowser()
       error.value = err
       throw err
     }

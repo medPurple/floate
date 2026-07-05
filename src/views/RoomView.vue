@@ -266,6 +266,13 @@ async function onStart() {
       })
     } else if (e.name === 'NotAllowedError') {
       push({ kind: 'error', message: 'Partage refusé.' })
+    } else if (e.code === 'browser-unsupported') {
+      const name = e.browser === 'firefox' ? 'Firefox' : e.browser === 'safari' ? 'Safari' : 'Ton navigateur'
+      push({
+        kind: 'error',
+        duration: 8000,
+        message: `${name} ne peut pas capturer le son d'un onglet. Utilise Chrome ou Edge, ou configure un câble audio virtuel (voir la page Infos).`
+      })
     } else if (e.code === 'not-supported') {
       push({
         kind: 'error',

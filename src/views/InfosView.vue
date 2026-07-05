@@ -47,6 +47,48 @@ import FlPageShell from '../components/molecules/FlPageShell.vue'
       </div>
     </section>
 
+    <!-- §4.1bis Compatibilité navigateur -->
+    <section class="page-section">
+      <h2>Compatibilité navigateur</h2>
+      <div class="page-prose">
+        <h3>Navigateurs compatibles</h3>
+        <p>
+          La diffusion audio d'onglet repose sur une fonctionnalité que
+          seuls les navigateurs basés sur Chromium supportent pleinement :
+        </p>
+        <ul>
+          <li>Google Chrome (desktop)</li>
+          <li>Microsoft Edge (desktop)</li>
+          <li>Brave, Opera, et autres navigateurs basés Chromium (desktop)</li>
+        </ul>
+
+        <h3>Firefox et Safari</h3>
+        <p>
+          Firefox et Safari ne transmettent jamais le son d'un onglet,
+          d'une fenêtre ou de l'écran partagé — c'est une limitation de
+          ces navigateurs, pas de floate (bugs ouverts depuis plusieurs
+          années côté Mozilla et WebKit). Si tu es hôte sur l'un de ces
+          navigateurs, floate t'en informe avant même d'ouvrir le partage.
+        </p>
+        <p>
+          Deux solutions si tu ne peux pas changer de navigateur :
+        </p>
+        <ul>
+          <li>Écoute en tant qu'auditeur : ça fonctionne partout, seule la diffusion (côté hôte) est concernée.</li>
+          <li>
+            Installe un câble audio virtuel, qui fait apparaître le son
+            de ton ordinateur comme un micro que floate peut capter via
+            <code>getUserMedia</code> :
+            <ul>
+              <li><strong>macOS</strong> : BlackHole (gratuit, open source)</li>
+              <li><strong>Windows</strong> : VB-Audio Virtual Cable, ou VoiceMeeter</li>
+              <li><strong>Linux</strong> : module-loopback via pavucontrol (PulseAudio/PipeWire)</li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </section>
+
     <!-- §4.2 Confidentialité -->
     <section class="page-section">
       <h2>Confidentialité</h2>
