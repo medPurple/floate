@@ -1,18 +1,3 @@
-/**
- * floate — serveur de signaling + console admin.
- *
- * Un seul process Node, un seul port. Deux upgrades WS distincts :
- *   /signaling  → mesh peer-to-peer (clients)
- *   /admin/stream → push KPIs/events temps réel (console admin)
- *
- * Endpoints HTTP :
- *   GET /health                       → public, pour le bot Discord
- *   GET /admin/api/snapshot?token=…  → JSON KPIs + top rooms + events
- *   GET /admin/api/events?token=…    → JSON flux d'activité
- *
- * Le path WS par défaut historique reste accessible aussi (compat dev) :
- * une socket qui se connecte sans /signaling tombe sur le namespace mesh.
- */
 import http from 'node:http'
 import { WebSocketServer } from 'ws'
 import { randomUUID } from 'node:crypto'
@@ -23,21 +8,17 @@ import { DEFAULT_PLAYER_ID, isPlayerId } from '../src/lib/players.js'
 import {
   trackVisit, trackSessionClosed, trackEvent,
   trackChatMessage, trackListenSource, trackTrafficSource, trackGeo,
-  snapshot, topRooms, recentEvents, startedAt,
-  subscribe, unsubscribe, startKpiBroadcaster,
-  loadFromDisk, flushNow, startAutoFlush, stopAutoFlush
+  snapshot, topRooms, recentEvents, startedAt, visitsSeries,
+  subscribe, unsubscribe, startKpiBroadcaster, startSessionPruning
 } from './stats.js'
+import { pool, ensureDbReady } from './db.js'
 
 const PORT = Number(process.env.PORT) || 8787
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'admin'
 const MAX_PEERS_PER_ROOM = 8
 const VERSION = '0.5.0'
 
-// Origines autorisées pour CORS et pour la vérif WS upgrade.
-// '*' en dev (défaut), liste séparée par virgules en prod :
-//   CORS_ORIGIN="https://floate.pages.dev,https://floate.tondomaine.com"
-const CORS_ORIGINS = (process.env.CORS_ORIGIN || '*')
-  .split(',').map(s => s.trim()).filter(Boolean)
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || '*').split(',').map(s => s.trim()).filter(Boolean)
 
 function originAllowed(origin) {
   if (!origin) return true                    // requests same-origin / curl
@@ -79,7 +60,7 @@ function checkAdmin(req) {
   return (fromQuery || fromHeader) === ADMIN_TOKEN
 }
 
-const httpServer = http.createServer((req, res) => {
+const httpServer = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     setCors(req, res)
     res.writeHead(204)
@@ -95,7 +76,7 @@ const httpServer = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/admin/api/snapshot') {
     if (!checkAdmin(req)) return sendJson(req, res, 401, { error: 'unauthorized' })
     return sendJson(req, res, 200, {
-      ...snapshot(rooms),
+      ...(await snapshot(rooms)),
       topRooms: topRooms(rooms),
       events: recentEvents()
     })
@@ -104,6 +85,15 @@ const httpServer = http.createServer((req, res) => {
   if (req.method === 'GET' && url.pathname === '/admin/api/events') {
     if (!checkAdmin(req)) return sendJson(req, res, 401, { error: 'unauthorized' })
     return sendJson(req, res, 200, { events: recentEvents(50) })
+  }
+
+  if (req.method === 'GET' && url.pathname === '/admin/api/visits-series') {
+    if (!checkAdmin(req)) return sendJson(req, res, 401, { error: 'unauthorized' })
+    const range = url.searchParams.get('range')
+    if (!['24h', '7j', '30j'].includes(range)) {
+      return sendJson(req, res, 400, { error: 'invalid-range' })
+    }
+    return sendJson(req, res, 200, await visitsSeries(range))
   }
 
   // Endpoint public : la liste des rooms publiques actives.
@@ -510,13 +500,13 @@ wssSignaling.on('connection', (ws, req) => {
    Admin WS — push KPIs + events
    ============================================================ */
 
-wssAdmin.on('connection', (ws) => {
+wssAdmin.on('connection', async (ws) => {
   const send = (msg) => {
     if (ws.readyState === 1) ws.send(JSON.stringify(msg))
   }
 
   // Push d'abord un snapshot complet, puis on s'abonne au stream.
-  send(snapshot(rooms))
+  send(await snapshot(rooms))
   send({ type: 'rooms', top: topRooms(rooms) })
   for (const ev of recentEvents()) send({ type: 'event', event: ev })
 
@@ -526,12 +516,13 @@ wssAdmin.on('connection', (ws) => {
   ws.on('error', () => unsubscribe(send))
 })
 
-// Charge les KPIs persistants du dernier run et lance le flush auto.
-// FLOATE_DATA_DIR peut surcharger le chemin par défaut (./data) en prod.
-loadFromDisk()
-startAutoFlush()
+// Toutes les stats vivent en PostgreSQL désormais (server/schema.sql) —
+// on vérifie juste que la DB répond avant d'accepter du trafic.
+await ensureDbReady()
+console.log('[floate] connexion DB OK')
 
 const kpiTimer = startKpiBroadcaster(rooms, 2500)
+const pruneTimer = startSessionPruning()
 
 /* ============================================================
    Démarrage
@@ -551,9 +542,8 @@ export const _internals = { rooms, buildHealth, checkAdmin, httpServer }
 // Cleanup propre
 function shutdown() {
   clearInterval(kpiTimer)
-  stopAutoFlush()
-  flushNow()
-  httpServer.close(() => process.exit(0))
+  clearInterval(pruneTimer)
+  pool.end().finally(() => httpServer.close(() => process.exit(0)))
 }
 process.on('SIGTERM', shutdown)
 process.on('SIGINT', shutdown)

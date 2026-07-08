@@ -8,7 +8,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   data: { type: Array, required: true },     // points [0..n]
-  hours: { type: Array, default: () => [0, 6, 12, 18, 23] }
+  ticks: { type: Array, default: () => ['00h', '06h', '12h', '18h', '23h'] }
 })
 
 const W = 600
@@ -58,7 +58,7 @@ const gridY = computed(() => [0, max.value / 2, max.value])
       :viewBox="`0 0 ${W} ${H}`"
       preserveAspectRatio="none"
       role="img"
-      aria-label="Visites sur les dernières heures"
+      aria-label="Visites sur la période sélectionnée"
     >
       <defs>
         <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
@@ -105,7 +105,7 @@ const gridY = computed(() => [0, max.value / 2, max.value])
     </svg>
 
     <div class="area-ticks">
-      <span v-for="h in hours" :key="h">{{ String(h).padStart(2, '0') }}h</span>
+      <span v-for="(t, i) in ticks" :key="i">{{ t }}</span>
     </div>
   </div>
 </template>

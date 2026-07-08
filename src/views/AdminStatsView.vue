@@ -7,7 +7,7 @@
   (variante de la page 403 du spec §8).
 -->
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import KpiCard from '../components/admin/KpiCard.vue'
@@ -19,6 +19,7 @@ import EventFeed from '../components/admin/EventFeed.vue'
 import FlButton from '../components/atoms/FlButton.vue'
 
 import { useAdminStream, getAdminToken, setAdminToken, clearAdminToken } from '../composables/useAdminStream.js'
+import { ADMIN_HTTP_URL } from '../lib/config.js'
 
 const router = useRouter()
 
@@ -56,10 +57,42 @@ const topRooms = computed(() => stream?.topRooms.value ?? [])
 const events = computed(() => stream?.events.value ?? [])
 
 // --- Range toggle (24h / 7j / 30j) -----------------------------------
+// Le gros graphique "Visites · {{range}}" a sa propre série, tirée à la
+// demande de /admin/api/visits-series (indépendante du push KPI temps
+// réel, qui reste sur le jour courant pour la sparkline de la KpiCard).
 const range = ref('24h')
+const rangeSeries = ref({ values: new Array(24).fill(0), labels: [] })
+
+async function fetchRangeSeries() {
+  if (!tokenSet.value) return
+  const token = getAdminToken()
+  try {
+    const res = await fetch(
+      `${ADMIN_HTTP_URL}/admin/api/visits-series?range=${range.value}&token=${encodeURIComponent(token)}`
+    )
+    if (!res.ok) return
+    rangeSeries.value = await res.json()
+  } catch {
+    // silencieux — le graphique garde l'ancienne série affichée
+  }
+}
+
+watch(range, fetchRangeSeries, { immediate: true })
+
+const chartData = computed(() => rangeSeries.value.values || [])
+
+// Sous-échantillonne les labels pour ne pas surcharger l'axe (même
+// logique visuelle qu'avant : quelques repères espacés, pas un par point).
+const chartTicks = computed(() => {
+  const labels = rangeSeries.value.labels || []
+  if (!labels.length) return []
+  const targetCount = 5
+  const step = Math.max(1, Math.ceil(labels.length / targetCount))
+  return labels.filter((_, i) => i % step === 0 || i === labels.length - 1)
+})
 
 // --- Sources / trafic / géo (depuis le snapshot KPI serveur) ----------
-// Le serveur agrège ces compteurs dans server/data/stats.json. Tant
+// Le serveur agrège ces compteurs en PostgreSQL (server/schema.sql). Tant
 // qu'aucune donnée n'est tombée, les tableaux peuvent être vides —
 // les composants BarsList affichent un état vide cohérent dans ce cas.
 
@@ -174,7 +207,7 @@ onUnmounted(() => stream?.disconnect())
     <section class="row-wide">
       <article class="panel chart-panel">
         <h3 class="panel-title">Visites · {{ range }}</h3>
-        <AreaChart :data="visitsByHour" />
+        <AreaChart :data="chartData" :ticks="chartTicks" />
       </article>
 
       <article class="panel">

@@ -1,211 +1,37 @@
 /**
- * Stats pour la console admin — version v0.5 avec persistance fichier.
- *
- * Stockage texte (JSON + NDJSON) le temps de la version 0.6 qui
- * apportera une vraie base de données. Layout :
- *
- *   server/data/
- *     stats.json          KPIs cumulés (visites, sessions, sources,
- *                         trafic, géo). Flushé en debounce 30s + sur
- *                         SIGTERM/SIGINT.
- *     events.log          NDJSON append-only des events d'activité.
- *     chat/<code>.log     NDJSON append-only par room (cf. index.js).
- *
- * API exposée :
- *  - track*()    : événements internes appelés depuis index.js
- *  - snapshot()  : état complet pour /admin/api/snapshot + push WS
- *  - recentEvents() : flux d'activité (ring buffer en mémoire)
- *  - subscribe(cb) / unsubscribe(cb) : pour le WS admin temps réel
- *  - loadFromDisk() / flushNow() / startAutoFlush() : persistance
+ * Stats pour la console admin — persistées en PostgreSQL (server/schema.sql).
+ * Plus de fichiers : chaque tracker écrit directement en base, les getters
+ * (snapshot notamment) lisent la base à la volée. Il n'y a plus d'état
+ * intermédiaire à charger/flusher au démarrage/arrêt.
  */
-
-import fs from 'node:fs'
-import path from 'node:path'
+import { pool } from './db.js'
 
 const STARTED_AT = Date.now()
+const EVENT_BUFFER_SIZE = 50
 
-// --- Paramétrage ---------------------------------------------------------
-
-const DATA_DIR  = process.env.FLOATE_DATA_DIR || path.join(process.cwd(), 'data')
-const STATS_FILE = path.join(DATA_DIR, 'stats.json')
-const EVENTS_LOG = path.join(DATA_DIR, 'events.log')
-const CHAT_DIR   = path.join(DATA_DIR, 'chat')
-
-const SESSION_RETENTION_MS = 24 * 60 * 60 * 1000
-const FLUSH_INTERVAL_MS    = 30_000
-const EVENT_BUFFER_SIZE    = 50
-
-// --- État en mémoire (snapshot persistant) ------------------------------
-
-const state = {
-  visitsToday: 0,
-  visitsResetAt: startOfDayMs(),
-  visitsByHour: new Array(24).fill(0),
-  closedSessions: [],
-  // Compteurs cumulés depuis l'install. Maps { name → count }.
-  listenSources: Object.create(null),
-  trafficSources: Object.create(null),
-  geo: Object.create(null)
-}
-
-// Ring buffer des derniers events (50 max) — pour le push admin.
-// L'historique complet vit dans events.log côté disque.
+// Ring buffer mémoire des derniers events, uniquement pour le replay
+// immédiat à la connexion d'un admin WS — l'historique complet vit
+// dans la table events.
 const events = []
 let eventSeq = 0
 
 // Subscribers WS admin
 const subs = new Set()
 
-// Persistance : dirty bit + timer + flag de disponibilité du disque
-let dirty = false
-let flushTimer = null
-// Si DATA_DIR n'est pas inscriptible (cas typique : systemd avec
-// ProtectSystem=strict ou perms inadaptées), on bascule en mémoire pure.
-// Évite de spammer les logs à chaque event/flush.
-let persistenceEnabled = false
-
-// --- Utilitaires ---------------------------------------------------------
-
-function startOfDayMs() {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.getTime()
-}
-
-function maybeResetDailyCounters() {
-  const newReset = startOfDayMs()
-  if (newReset > state.visitsResetAt) {
-    state.visitsToday = 0
-    state.visitsResetAt = newReset
-    state.visitsByHour = new Array(24).fill(0)
-    dirty = true
-  }
-}
-
-/**
- * Tente de créer les dossiers de persistance ET vérifie qu'on peut
- * écrire dedans. Met persistenceEnabled à true si tout est OK.
- * Appelé une fois au boot par loadFromDisk().
- */
-function probeDataDirs() {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true })
-    fs.mkdirSync(CHAT_DIR, { recursive: true })
-    // Test d'écriture : crée puis supprime un fichier témoin.
-    const probe = path.join(DATA_DIR, '.write-probe')
-    fs.writeFileSync(probe, 'ok')
-    fs.unlinkSync(probe)
-    persistenceEnabled = true
-  } catch (err) {
-    persistenceEnabled = false
-    console.warn(
-      `[stats] persistance disque désactivée — DATA_DIR (${DATA_DIR}) ` +
-      `n'est pas inscriptible : ${err.message}\n` +
-      `[stats] les KPIs continuent en mémoire pure (perdus au redémarrage).\n` +
-      `[stats] pour activer : créer un dossier inscriptible et exporter ` +
-      `FLOATE_DATA_DIR=/chemin/inscriptible`
-    )
-  }
-}
-
-function safeIncrement(map, key) {
-  if (!key) return
-  map[key] = (map[key] || 0) + 1
-  dirty = true
-}
-
-function mapToList(map, limit = 12) {
-  return Object.entries(map)
-    .map(([name, value]) => ({ name, value }))
-    .sort((a, b) => b.value - a.value)
-    .slice(0, limit)
-}
-
-// --- Persistance (lecture/écriture) -------------------------------------
-
-export function loadFromDisk() {
-  probeDataDirs()
-  if (!persistenceEnabled) return
-  if (!fs.existsSync(STATS_FILE)) return
-  try {
-    const raw = fs.readFileSync(STATS_FILE, 'utf-8')
-    const data = JSON.parse(raw)
-    // Merge prudent : on garde les nouveaux champs absents du fichier.
-    if (Number.isFinite(data.visitsToday))   state.visitsToday   = data.visitsToday
-    if (Number.isFinite(data.visitsResetAt)) state.visitsResetAt = data.visitsResetAt
-    if (Array.isArray(data.visitsByHour) && data.visitsByHour.length === 24) {
-      state.visitsByHour = data.visitsByHour.map(n => Number(n) || 0)
-    }
-    if (Array.isArray(data.closedSessions)) {
-      const cutoff = Date.now() - SESSION_RETENTION_MS
-      state.closedSessions = data.closedSessions
-        .filter(s => s && Number.isFinite(s.leftAt) && s.leftAt >= cutoff)
-    }
-    if (data.listenSources  && typeof data.listenSources  === 'object') Object.assign(state.listenSources,  data.listenSources)
-    if (data.trafficSources && typeof data.trafficSources === 'object') Object.assign(state.trafficSources, data.trafficSources)
-    if (data.geo            && typeof data.geo            === 'object') Object.assign(state.geo,            data.geo)
-    // Si la journée a changé pendant l'arrêt, reset.
-    maybeResetDailyCounters()
-    console.log('[stats] loaded from', STATS_FILE)
-  } catch (err) {
-    console.warn('[stats] load failed:', err.message)
-  }
-}
-
-export function flushNow() {
-  if (!dirty) return
-  if (!persistenceEnabled) { dirty = false; return }
-  try {
-    const payload = JSON.stringify({
-      version: 1,
-      savedAt: Date.now(),
-      ...state
-    }, null, 2)
-    fs.writeFileSync(STATS_FILE, payload, 'utf-8')
-    dirty = false
-  } catch (err) {
-    // Disque devenu indisponible en cours de run (cas rare). On bascule
-    // en mémoire pure et on n'essaiera plus jusqu'au prochain reboot.
-    persistenceEnabled = false
-    dirty = false
-    console.warn('[stats] flush failed, persistance désactivée :', err.message)
-  }
-}
-
-export function startAutoFlush(intervalMs = FLUSH_INTERVAL_MS) {
-  if (flushTimer) return flushTimer
-  flushTimer = setInterval(flushNow, intervalMs)
-  return flushTimer
-}
-
-export function stopAutoFlush() {
-  if (flushTimer) { clearInterval(flushTimer); flushTimer = null }
-}
-
-// --- Trackers ------------------------------------------------------------
+// --- Trackers (fire-and-forget : on ne bloque jamais le hot path WS) ------
 
 export function trackVisit() {
-  maybeResetDailyCounters()
-  state.visitsToday += 1
-  state.visitsByHour[new Date().getHours()] += 1
-  dirty = true
+  pool.query('INSERT INTO visits DEFAULT VALUES')
+    .catch(err => console.warn('[stats] trackVisit:', err.message))
 }
 
 export function trackSessionClosed(joinedAt) {
-  const now = Date.now()
-  state.closedSessions.push({ joinedAt, leftAt: now })
-  // Trim ce qui a > 24h.
-  const cutoff = now - SESSION_RETENTION_MS
-  while (state.closedSessions.length && state.closedSessions[0].leftAt < cutoff) {
-    state.closedSessions.shift()
-  }
-  dirty = true
+  pool.query(
+    'INSERT INTO closed_sessions (joined_at, left_at) VALUES (to_timestamp($1 / 1000.0), now())',
+    [joinedAt]
+  ).catch(err => console.warn('[stats] trackSessionClosed:', err.message))
 }
 
-/**
- * trackEvent — push dans le ring buffer mémoire (pour admin temps réel)
- * + append au fichier events.log (NDJSON).
- */
 export function trackEvent(kind, who, room) {
   const ev = {
     id: ++eventSeq,
@@ -217,37 +43,24 @@ export function trackEvent(kind, who, room) {
   events.unshift(ev)
   if (events.length > EVENT_BUFFER_SIZE) events.pop()
 
-  // Append au log persistant. Skip silencieux si la persistance est off.
-  if (persistenceEnabled) {
-    fs.appendFile(EVENTS_LOG, JSON.stringify(ev) + '\n', () => { /* swallow */ })
-  }
+  pool.query(
+    'INSERT INTO events (kind, who, room) VALUES ($1, $2, $3)',
+    [kind, who, room]
+  ).catch(err => console.warn('[stats] trackEvent:', err.message))
 
   fanout({ type: 'event', event: ev })
 }
 
-/**
- * trackChatMessage — append au log chat de la room (server/data/chat/<code>.log).
- * Pas de buffer mémoire ici (le serveur ne stocke pas l'historique chat,
- * c'est uniquement pour audit / modération post-mortem).
- */
 export function trackChatMessage({ room, peerId, pseudo, text, ts }) {
   if (!room) return
-  if (!persistenceEnabled) return
-  const file = path.join(CHAT_DIR, `${sanitizeCode(room)}.log`)
-  const line = JSON.stringify({ peerId, pseudo, text, ts }) + '\n'
-  fs.appendFile(file, line, () => { /* swallow */ })
+  pool.query(
+    'INSERT INTO chat_messages (room, peer_id, pseudo, text, ts) VALUES ($1, $2, $3, $4, to_timestamp($5 / 1000.0))',
+    [room, peerId, pseudo, text, ts]
+  ).catch(err => console.warn('[stats] trackChatMessage:', err.message))
 }
 
-function sanitizeCode(code) {
-  return String(code).replace(/[^A-Za-z0-9_-]/g, '')
-}
+// --- Classifiers pour sources / trafic / géo (purs, inchangés) ----------
 
-// --- Classifiers pour sources / trafic / géo ----------------------------
-
-/**
- * Classe une URL d'onglet en source d'écoute connue. Renvoie 'Autres'
- * par défaut, null si l'URL est invalide ou vide.
- */
 export function classifyListenSource(url) {
   if (!url) return null
   let host
@@ -264,13 +77,6 @@ export function classifyListenSource(url) {
   return 'Autres'
 }
 
-/**
- * Classe l'origine d'une session (referrer + URL d'entrée).
- *   - Direct           : pas de referrer
- *   - Lien d'invitation : referrer ou hash contient /r/CODE
- *   - Réseaux sociaux  : referrer sur facebook/twitter/x/instagram/reddit/etc
- *   - Autre            : tout le reste
- */
 export function classifyTrafficSource({ referrer, hash }) {
   const hashStr = String(hash || '')
   if (hashStr.includes('/r/')) return 'Lien d\'invitation'
@@ -288,22 +94,13 @@ export function classifyTrafficSource({ referrer, hash }) {
   }
 
   const socials = ['facebook', 't.co', 'twitter', 'x.com', 'instagram',
-                   'reddit', 'tiktok', 'youtube', 'linkedin', 'discord',
-                   'mastodon', 'bsky.app']
+                    'reddit', 'tiktok', 'youtube', 'linkedin', 'discord',
+                    'mastodon', 'bsky.app']
   if (socials.some(s => host.includes(s))) return 'Réseaux sociaux'
 
   return 'Autre'
 }
 
-/**
- * Extrait un code pays depuis un header Accept-Language. Stopgap honnête :
- * la locale ne reflète pas vraiment la géo, mais c'est mieux que rien
- * sans dépendance externe. À remplacer par geo IP en v0.6.
- *
- *   "fr-FR,fr;q=0.9,en-US;q=0.8" → "FR"
- *   "en-US"                       → "US"
- *   "fr"                          → "Inconnu" (pas de pays)
- */
 export function extractCountryCode(acceptLanguage) {
   if (!acceptLanguage) return 'Inconnu'
   const primary = String(acceptLanguage).split(',')[0].trim()
@@ -316,24 +113,47 @@ export function extractCountryCode(acceptLanguage) {
 export function trackListenSource(url) {
   const name = classifyListenSource(url)
   if (!name) return
-  safeIncrement(state.listenSources, name)
+  upsertListenSource(name)
 }
 
 export function trackTrafficSource({ referrer, hash }) {
-  const name = classifyTrafficSource({ referrer, hash })
-  safeIncrement(state.trafficSources, name)
+  upsertTrafficSource(classifyTrafficSource({ referrer, hash }))
 }
 
 export function trackGeo(acceptLanguage) {
-  const name = extractCountryCode(acceptLanguage)
-  safeIncrement(state.geo, name)
+  upsertGeo(extractCountryCode(acceptLanguage))
 }
 
-// --- Getters ------------------------------------------------------------
+// Trois fonctions dédiées plutôt qu'un helper générique paramétré par nom
+// de table — évite toute interpolation SQL, même si les noms ne viennent
+// jamais d'une entrée utilisateur.
+function upsertListenSource(name) {
+  pool.query(
+    `INSERT INTO listen_sources (name, count) VALUES ($1, 1)
+     ON CONFLICT (name) DO UPDATE SET count = listen_sources.count + 1`,
+    [name]
+  ).catch(err => console.warn('[stats] upsertListenSource:', err.message))
+}
 
-export function snapshot(rooms) {
-  maybeResetDailyCounters()
+function upsertTrafficSource(name) {
+  pool.query(
+    `INSERT INTO traffic_sources (name, count) VALUES ($1, 1)
+     ON CONFLICT (name) DO UPDATE SET count = traffic_sources.count + 1`,
+    [name]
+  ).catch(err => console.warn('[stats] upsertTrafficSource:', err.message))
+}
 
+function upsertGeo(name) {
+  pool.query(
+    `INSERT INTO geo_stats (name, count) VALUES ($1, 1)
+     ON CONFLICT (name) DO UPDATE SET count = geo_stats.count + 1`,
+    [name]
+  ).catch(err => console.warn('[stats] upsertGeo:', err.message))
+}
+
+// --- Getters (lecture live en base) --------------------------------------
+
+export async function snapshot(rooms) {
   let usersOnline = 0
   let streamingRooms = 0
   for (const room of rooms.values()) {
@@ -341,20 +161,106 @@ export function snapshot(rooms) {
     if (room._streaming?.size > 0) streamingRooms += 1
   }
 
+  const [visitsToday, visitsByHour, avgListenSeconds, listenSources, trafficSources, geo] =
+    await Promise.all([
+      countVisitsToday(),
+      visitsByHourToday(),
+      medianListenSeconds(),
+      topCounts('listen_sources'),
+      topCounts('traffic_sources'),
+      topCounts('geo_stats')
+    ])
+
   return {
     type: 'kpi',
     ts: Date.now(),
     usersOnline,
     activeRooms: rooms.size,
     streamingRooms,
-    avgListenSeconds: medianListenSeconds(),
-    visitsToday: state.visitsToday,
-    visitsByHour: [...state.visitsByHour],
-    listenSources:  mapToList(state.listenSources),
-    trafficSources: mapToList(state.trafficSources),
-    geo:            mapToList(state.geo),
+    avgListenSeconds,
+    visitsToday,
+    visitsByHour,
+    listenSources,
+    trafficSources,
+    geo,
     uptimeSeconds: Math.floor((Date.now() - STARTED_AT) / 1000)
   }
+}
+
+async function countVisitsToday() {
+  const { rows } = await pool.query(
+    `SELECT count(*)::int AS n FROM visits WHERE ts >= date_trunc('day', now())`
+  )
+  return rows[0].n
+}
+
+async function visitsByHourToday() {
+  const { rows } = await pool.query(
+    `SELECT extract(hour FROM ts)::int AS h, count(*)::int AS n
+     FROM visits WHERE ts >= date_trunc('day', now()) GROUP BY h`
+  )
+  const byHour = new Array(24).fill(0)
+  for (const r of rows) byHour[r.h] = r.n
+  return byHour
+}
+
+// Série pour le sélecteur 24h/7j/30j de la console admin. 24h renvoie un
+// point par heure (jour courant, comme visitsByHourToday) ; 7j/30j renvoient
+// un point par jour, avec generate_series pour ne pas sauter les jours à 0.
+const RANGE_DAYS = { '7j': 7, '30j': 30 }
+
+export async function visitsSeries(range) {
+  if (range === '24h') {
+    const values = await visitsByHourToday()
+    return {
+      values,
+      labels: values.map((_, h) => `${String(h).padStart(2, '0')}h`)
+    }
+  }
+
+  const days = RANGE_DAYS[range] || RANGE_DAYS['7j']
+  const { rows } = await pool.query(
+    `SELECT gs.day::date AS day, count(v.id)::int AS n
+     FROM generate_series(
+       date_trunc('day', now()) - ($1::int - 1) * interval '1 day',
+       date_trunc('day', now()),
+       interval '1 day'
+     ) AS gs(day)
+     LEFT JOIN visits v ON date_trunc('day', v.ts) = gs.day
+     GROUP BY gs.day
+     ORDER BY gs.day`,
+    [days]
+  )
+  return {
+    values: rows.map(r => r.n),
+    labels: rows.map(r => {
+      const d = new Date(r.day)
+      return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+    })
+  }
+}
+
+async function medianListenSeconds() {
+  const { rows } = await pool.query(
+    `SELECT extract(epoch FROM (left_at - joined_at))::int AS dur
+     FROM closed_sessions
+     WHERE left_at >= now() - interval '24 hours'
+     ORDER BY dur`
+  )
+  if (!rows.length) return 0
+  const durations = rows.map(r => r.dur)
+  const mid = Math.floor(durations.length / 2)
+  return durations.length % 2 === 0
+    ? Math.floor((durations[mid - 1] + durations[mid]) / 2)
+    : durations[mid]
+}
+
+async function topCounts(table, limit = 12) {
+  const { rows } = await pool.query(
+    `SELECT name, count::int AS value FROM ${table} ORDER BY count DESC LIMIT $1`,
+    [limit]
+  )
+  return rows
 }
 
 export function topRooms(rooms, limit = 6) {
@@ -384,19 +290,17 @@ export function recentEvents(limit = 8) {
   return events.slice(0, limit)
 }
 
-function medianListenSeconds() {
-  if (!state.closedSessions.length) return 0
-  const durations = state.closedSessions
-    .map(s => Math.floor((s.leftAt - s.joinedAt) / 1000))
-    .sort((a, b) => a - b)
-  const mid = Math.floor(durations.length / 2)
-  return durations.length % 2 === 0
-    ? Math.floor((durations[mid - 1] + durations[mid]) / 2)
-    : durations[mid]
-}
-
 export function startedAt() {
   return STARTED_AT
+}
+
+// --- Maintenance : purge des vieilles sessions closes --------------------
+
+export function startSessionPruning(intervalMs = 60 * 60 * 1000) {
+  return setInterval(() => {
+    pool.query(`DELETE FROM closed_sessions WHERE left_at < now() - interval '24 hours'`)
+      .catch(err => console.warn('[stats] pruning:', err.message))
+  }, intervalMs)
 }
 
 // --- Pub/sub pour le WS admin -------------------------------------------
@@ -410,18 +314,14 @@ function fanout(msg) {
   }
 }
 
-/**
- * Pousse périodiquement le snapshot KPI à tous les abonnés admin.
- * Appelé depuis index.js avec la map rooms.
- */
 export function startKpiBroadcaster(rooms, intervalMs = 2500) {
-  return setInterval(() => {
+  return setInterval(async () => {
     if (subs.size === 0) return
-    fanout(snapshot(rooms))
-    fanout({ type: 'rooms', top: topRooms(rooms) })
+    try {
+      fanout(await snapshot(rooms))
+      fanout({ type: 'rooms', top: topRooms(rooms) })
+    } catch (err) {
+      console.warn('[stats] kpi broadcast:', err.message)
+    }
   }, intervalMs)
 }
-
-// --- Pour les tests : exposer les chemins ------------------------------
-
-export const _paths = { DATA_DIR, STATS_FILE, EVENTS_LOG, CHAT_DIR }

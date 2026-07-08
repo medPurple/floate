@@ -17,7 +17,10 @@ Pas de doc publique : c'est ton aide-mémoire pour quand tu reviens dans
 - Process Node `server/index.js` lancé par systemd
 - Écoute sur `:8787` (HTTP + deux upgrade WebSocket : `/signaling` mesh
   + `/admin/stream` push admin)
-- Pas de DB en v0.5 — stockage texte dans `FLOATE_DATA_DIR`
+- Stats/events/chat persistés en **PostgreSQL** (VPS dédié `51.91.122.50`,
+  base `floate_db`) — voir `server/schema.sql` pour les tables et §3/§4
+  ci-dessous pour la connexion. Plus aucun fichier local (`server/data/`
+  a été supprimé).
 
 **Trafic audio** : 0 transit par ton serveur. Les peers se parlent en
 P2P (WebRTC mesh). Le serveur ne fait que le rendez-vous + relayer le
@@ -79,7 +82,7 @@ Définies dans l'override `/etc/systemd/system/floate-signaling.service.d/overri
 | `ADMIN_TOKEN`     | `admin`             | Token pour ouvrir `/#/admin/stats`. À mettre en clair long aléatoire en prod. |
 | `PORT`            | `8787`              | Port HTTP+WS local du signaling. |
 | `CORS_ORIGIN`     | `*`                 | Origines autorisées pour CORS et WS upgrade. En prod : liste séparée par virgules. |
-| `FLOATE_DATA_DIR` | `./data` (cwd)      | Où le serveur écrit stats/logs. **Doit être inscriptible par l'user du service.** |
+| `DATABASE_URL`    | *(aucun, requis)*   | Connexion Postgres, ex. `postgresql://floate:MOT_DE_PASSE@10.10.0.1:5432/floate_db`. **Le process refuse de démarrer sans (`ensureDbReady()` fail-fast).** Si le mot de passe contient `+`/`/`, l'encoder en URL ou passer par des variables séparées. |
 
 Pour ajouter / changer une variable :
 
@@ -87,11 +90,17 @@ Pour ajouter / changer une variable :
 sudo systemctl edit floate-signaling
 # Ajoute dans le bloc [Service] :
 #   Environment=ADMIN_TOKEN=xxxxxxxxxxxxx
-#   Environment=FLOATE_DATA_DIR=/var/lib/floate
+#   Environment=DATABASE_URL=postgresql://floate:xxx@10.10.0.1:5432/floate_db
 # Sauve, puis :
 sudo systemctl daemon-reload
 sudo systemctl restart floate-signaling
 ```
+
+**Accès réseau à la DB** : le VPS DB (`51.91.122.50`) n'expose Postgres que
+sur `localhost` + l'interface Wireguard (`10.10.0.1`), jamais publiquement.
+Si le serveur de signaling tourne sur une autre machine, il doit d'abord
+être ajouté comme peer Wireguard (`/root/add-wg-peer.sh` sur le VPS DB)
+avant que `DATABASE_URL` puisse pointer vers `10.10.0.1`.
 
 ---
 
@@ -104,23 +113,27 @@ sudo systemctl restart floate-signaling
 ├── src/                  Front Vue (Lobby, Room, Admin, Infos, Contact)
 ├── server/               Back signaling Node
 │   ├── index.js          Entrée : WS signaling + admin + endpoints HTTP
-│   ├── stats.js          Tracking + persistance KPIs/logs
-│   └── test/             Tests Node natifs
+│   ├── stats.js          Tracking + lecture des KPIs (requêtes SQL live)
+│   ├── db.js             Pool pg + ensureDbReady()
+│   ├── schema.sql        DDL des tables (à rejouer si nouvelle DB)
+│   └── test/             Tests Node natifs (health.test.js a besoin de
+│                           DATABASE_URL joignable pour tourner)
 └── dist/                 (produit par `npm run build`, sert localement
                            si tu testes sans Cloudflare)
 ```
 
-### Données (FLOATE_DATA_DIR)
+### Données (PostgreSQL)
 
-```
-/var/lib/floate/          ← chemin recommandé en prod (à créer + chown)
-├── stats.json            KPIs cumulés (visites, sessions, sources,
-                            trafic, géo). Flushé toutes les 30s.
-├── events.log            NDJSON append-only (1 event par ligne).
-└── chat/
-    ├── ABC-123.log       NDJSON par room (peerId, pseudo, text, ts).
-    ├── XYZ-789.log
-    └── ...
+VPS dédié `51.91.122.50` (Debian 13), base `floate_db`, user `floate`.
+Tables : `visits`, `closed_sessions`, `listen_sources`, `traffic_sources`,
+`geo_stats`, `events`, `chat_messages` — voir `server/schema.sql`.
+
+```bash
+# Depuis ta machine, tunnel SSH pour DBeaver/psql en local :
+ssh -L 5432:localhost:5432 debian@51.91.122.50
+
+# Ou en direct depuis le VPS DB :
+PGPASSWORD='...' psql -h localhost -U floate -d floate_db
 ```
 
 ### systemd
@@ -183,10 +196,14 @@ ssh ton-vps
 cd /var/www/floate
 git pull
 cd server
-npm install --omit=dev    # si dépendances ont bougé
+npm install --omit=dev    # si dépendances ont bougé (pg ajouté en v0.6)
 sudo systemctl restart floate-signaling
-sudo journalctl -u floate-signaling -n 30   # vérifier le boot
+sudo journalctl -u floate-signaling -n 30   # vérifier le boot (DB OK ?)
 ```
+
+Si `server/schema.sql` a changé (nouvelle table/colonne), le rejouer à la
+main sur `floate_db` — pas de système de migration automatique pour
+l'instant.
 
 ---
 
@@ -196,9 +213,9 @@ sudo journalctl -u floate-signaling -n 30   # vérifier le boot
 |---|---|
 | Page admin renvoie 401 | `systemctl show floate-signaling -p Environment` → comparer avec le token tapé. Si différent : `localStorage.removeItem('floate.admin-token')` côté nav puis recoller le bon. |
 | WS ne se connecte pas (HTTPS prod) | Vérifier `CORS_ORIGIN` dans l'override, certificat valide (Let's Encrypt / CF), reverse proxy nginx upgrade headers. |
-| Logs spam `EACCES` / `EROFS` sur `data/` | Permissions : `sudo mkdir -p /var/lib/floate && sudo chown -R USER:USER /var/lib/floate` puis exporter `FLOATE_DATA_DIR=/var/lib/floate`. Si systemd hardening : ajouter `ReadWritePaths=/var/lib/floate`. |
 | Port 8787 déjà pris au start | L'override a déjà un `ExecStartPre=/bin/sh -c 'fuser -k 8787/tcp || true'` qui tue ce qui traîne. Si ça persiste : `sudo lsof -i :8787`. |
-| Stats restent à zéro après restart | Soit `persistenceEnabled = false` (cf. message au boot dans les logs), soit le chemin `FLOATE_DATA_DIR` change entre runs. |
+| Le service ne démarre pas / boucle en restart | `ensureDbReady()` échoue → `DATABASE_URL` absent, mauvais mot de passe, ou Wireguard down entre ce serveur et le VPS DB. Voir `sudo journalctl -u floate-signaling -n 30` pour le message d'erreur exact, et `sudo wg show` sur le VPS DB pour vérifier que le peer a un handshake récent. |
+| Stats à zéro alors que du monde est connecté | Vérifier que les tables existent (`\dt` dans psql) et que `trackVisit`/`trackEvent` ne loguent pas d'erreur dans les logs (`[stats] trackVisit: ...`) — le tracking est fire-and-forget, une erreur DB ne casse pas la connexion WS mais est juste warnée en log. |
 | Audio qui « accélère/ralentit » | Détecteur stream-health côté listener. Si trop sensible, ajuster les seuils dans `src/lib/streamHealth.js` (POOR_CONCEAL_RATE, GRACE_PERIOD_MS). |
 | Deux services systemd `floate*` actifs | Vestige d'un ancien déploiement. Le bon est `floate-signaling.service`. Pour virer l'autre : `sudo systemctl stop floate.service && sudo systemctl disable floate.service && sudo rm /etc/systemd/system/floate.service && sudo systemctl daemon-reload && sudo systemctl reset-failed`. |
 
@@ -226,18 +243,26 @@ systemctl show floate-signaling -p MemoryCurrent -p CPUUsageNSec
 # Suivi en continu, toutes les 2s
 watch -n 2 'systemctl status floate-signaling | grep -E "Memory|CPU"'
 
-# Disque (logs persistés)
+# Disque (sur le VPS DB, 51.91.122.50)
 df -h
-du -sh /var/lib/floate/*
+sudo du -sh /var/lib/postgresql/*
 ```
 
 ---
 
 ## 9. Notes pour v0.6
 
-- Migrer `stats.json` + `events.log` + `chat/*.log` vers SQLite.
+- ~~Migrer `stats.json` + `events.log` + `chat/*.log` vers SQLite~~ → fait,
+  migré vers PostgreSQL (voir §1/§4) plutôt que SQLite.
+- Le sélecteur 24h/7j/30j de la console admin (`RangeToggle`) n'est
+  **pas branché** — `range` change juste le label affiché, pas les
+  données. Maintenant que `visits` garde un timestamp par ligne
+  (au lieu d'un total reset chaque jour), c'est faisable : agréger
+  par jour sur la période demandée côté `stats.js` + nouvel endpoint.
 - Brancher la geo IP réelle (fini le proxy `Accept-Language`).
 - Brancher Stripe / Ko-fi sur le bouton café du footer.
 - Brancher le form Contact sur Formspree ou un mailer.
-- Rotation des logs (logrotate ou côté code).
+- Rotation/purge des vieilles lignes `visits`/`events` si la table
+  grossit trop (pas de limite pour l'instant, seul `closed_sessions`
+  est purgé au-delà de 24h via `startSessionPruning()`).
 - Anti-spam form Contact (honeypot ou captcha invisible).
